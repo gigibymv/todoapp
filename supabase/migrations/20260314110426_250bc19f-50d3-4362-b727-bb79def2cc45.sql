@@ -1,0 +1,1 @@
+DELETE FROM briefings WHERE date = '2026-03-14';

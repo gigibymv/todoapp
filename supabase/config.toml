@@ -1,0 +1,7 @@
+project_id = "kcbosennxvhsqmmwmdwo"
+
+[functions.prepare-coffee-chat]
+verify_jwt = false
+
+[functions.sync-all-calendars]
+verify_jwt = false

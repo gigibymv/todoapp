@@ -1,0 +1,1 @@
+DELETE FROM calendar_events WHERE user_id = 'e1514077-b16b-465c-af7f-b44c59f5150d';

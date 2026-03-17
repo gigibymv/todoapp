@@ -1,0 +1,2 @@
+ALTER TABLE public.calendar_events ADD COLUMN IF NOT EXISTS dismissed boolean DEFAULT false;
+ALTER TABLE public.calendar_events ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone DEFAULT null;

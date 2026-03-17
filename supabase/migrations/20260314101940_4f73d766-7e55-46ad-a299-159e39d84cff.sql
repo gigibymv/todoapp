@@ -1,0 +1,1 @@
+ALTER TABLE public.briefings ADD CONSTRAINT briefings_user_id_date_unique UNIQUE (user_id, date);

@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 37 14% 90%;
+    --foreground: 0 0% 7%;
+    --card: 37 14% 93%;
+    --card-foreground: 0 0% 7%;
+    --popover: 37 14% 93%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 0 0% 7%;
+    --primary-foreground: 37 14% 90%;
+    --secondary: 37 10% 86%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 37 10% 86%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 24 85% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 37 8% 82%;
+    --input: 37 8% 82%;
+    --ring: 0 0% 7%;
+    --radius: 0.625rem;
+    --sidebar-background: 37 14% 88%;
+    --sidebar-foreground: 0 0% 30%;
+    --sidebar-primary: 0 0% 7%;
+    --sidebar-primary-foreground: 37 14% 90%;
+    --sidebar-accent: 37 10% 84%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 37 8% 82%;
+    --sidebar-ring: 24 85% 55%;
+
+    /* Orange accent */
+    --gigi-accent: 24 85% 55%;
+    --gigi-accent-soft: 24 85% 55%;
+
+    /* Gigi priority & context tokens */
+    --gigi-p1: 0 72% 51%;
+    --gigi-p2: 24 85% 55%;
+    --gigi-p3: 0 0% 30%;
+    --gigi-p4: 0 0% 62%;
+    --gigi-work: 214 82% 51%;
+    --gigi-mba: 271 69% 49%;
+    --gigi-personal: 152 69% 31%;
+    --gigi-finance: 24 85% 55%;
+    --gigi-health: 142 64% 40%;
+    --gigi-surface: 0 0% 7%;
+    --gigi-surface-raised: 0 0% 12%;
+    --gigi-glow: 24 85% 55%;
+  }
+
+  .dark {
+    --background: 30 6% 8%;
+    --foreground: 37 14% 90%;
+    --card: 30 6% 10%;
+    --card-foreground: 37 14% 90%;
+    --popover: 30 6% 10%;
+    --popover-foreground: 37 14% 90%;
+    --primary: 37 14% 90%;
+    --primary-foreground: 30 6% 8%;
+    --secondary: 30 6% 14%;
+    --secondary-foreground: 37 14% 90%;
+    --muted: 30 6% 14%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 24 85% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 37 14% 90%;
+    --border: 30 6% 18%;
+    --input: 30 6% 18%;
+    --ring: 37 14% 90%;
+    --sidebar-background: 30 6% 7%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 37 14% 90%;
+    --sidebar-primary-foreground: 30 6% 8%;
+    --sidebar-accent: 30 6% 14%;
+    --sidebar-accent-foreground: 37 14% 90%;
+    --sidebar-border: 30 6% 18%;
+    --sidebar-ring: 24 85% 55%;
+
+    --gigi-accent: 24 85% 55%;
+    --gigi-accent-soft: 24 85% 55%;
+    --gigi-surface: 30 6% 10%;
+    --gigi-surface-raised: 30 6% 14%;
+    --gigi-glow: 24 85% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.025em;
+  }
+}
+
+/* Scrollbar — minimal */
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 2px;
+}
+
+/* Selection — orange */
+::selection {
+  background: hsl(var(--accent) / 0.2);
+}
