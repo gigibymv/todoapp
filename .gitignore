@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# Bun
+bun.lock
+bun.lockb
+
 # Logs
 logs
 *.log
