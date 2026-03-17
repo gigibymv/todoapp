@@ -61,9 +61,9 @@ export interface AITaskParse {
 
 export const PRIORITY_LABELS: Record<TaskPriority, string> = {
   p1: 'Urgent',
-  p2: '',
-  p3: '',
-  p4: '',
+  p2: 'High',
+  p3: 'Normal',
+  p4: 'Low',
 };
 
 export const CONTEXT_LABELS: Record<TaskContext, string> = {

@@ -187,6 +187,7 @@ function CaptureForm({ onSaved, autoFocus = true, inline = true }: CaptureFormPr
       if (error) throw error;
       if (selectedProject) trackRecent(selectedProject.id);
       toast.success('Captured');
+      window.dispatchEvent(new CustomEvent('gigi:task-created'));
       setText('');
       setParsed(null);
       setSelectedProject(null);

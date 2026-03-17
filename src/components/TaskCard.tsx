@@ -167,9 +167,12 @@ export function TaskCard({ task, compact, boardName, onUpdate, onDelete, onEdit,
           className="shrink-0 rounded-full h-4 w-4 border-muted-foreground/30"
         />
         <div className="flex-1 min-w-0" onClick={() => onEdit?.(task)}>
-          <p className={cn('text-[13px] truncate', (task.status === 'done' || isArchived) && 'line-through text-muted-foreground')}>
-            {task.title}
-          </p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', contextDot(task.context))} />
+            <p className={cn('text-[13px] truncate', (task.status === 'done' || isArchived) && 'line-through text-muted-foreground')}>
+              {task.title}
+            </p>
+          </div>
           {!compact && (
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {task.priority === 'p1' && (

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import type { Task, TaskContext, TaskPriority, EnergyType } from '@/lib/types';
+import type { Task, TaskContext, TaskPriority, EnergyType, TaskStatus } from '@/lib/types';
 import { CONTEXT_LABELS, PRIORITY_LABELS, ENERGY_LABELS, CONTEXTS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { X, Plus, MapPin, Trash2 } from 'lucide-react';
@@ -45,6 +45,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
   const [context, setContext] = useState<TaskContext>('personal');
   const [priority, setPriority] = useState<TaskPriority>('p3');
   const [energyType, setEnergyType] = useState<EnergyType>('shallow');
+  const [status, setStatus] = useState<TaskStatus>('todo');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [estimatedMin, setEstimatedMin] = useState('');
   const [saving, setSaving] = useState(false);
@@ -74,6 +77,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
       setContext(task.context);
       setPriority(task.priority);
       setEnergyType(task.energy_type);
+      setStatus(task.status);
+      setScheduledDate(task.scheduled_date || '');
+      setScheduledTime(task.scheduled_time || '');
       setDueDate(task.due_date ? new Date(task.due_date).toISOString().slice(0, 16) : '');
       setEstimatedMin(task.estimated_duration_min?.toString() || '');
       setSelectedCategoryId((task as any).category_id || null);
@@ -94,12 +100,16 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
     const { error } = await supabase.from('tasks').update({
       title: title.trim(),
       description: description.trim() || null,
+      status,
       context, priority, energy_type: energyType,
+      scheduled_date: scheduledDate || null,
+      scheduled_time: scheduledTime || null,
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
       estimated_duration_min: estimatedMin ? parseInt(estimatedMin) : null,
       category_id: selectedCategoryId,
       recurrence_rule: recurrence || null,
       location: location.trim() || null,
+      completed_at: status === 'done' ? new Date().toISOString() : null,
     }).eq('id', task.id);
 
     if (error) toast.error(error.message);
@@ -279,6 +289,22 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
             )}
           </div>
 
+          {/* Status */}
+          <div>
+            <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Status</Label>
+            <div className="mt-1.5 flex gap-1">
+              {(['todo', 'in_progress', 'done', 'archived'] as TaskStatus[]).map((s) => (
+                <button key={s} type="button" onClick={() => setStatus(s)}
+                  className={cn(
+                    'flex-1 h-9 rounded-md text-[11px] font-medium transition-colors capitalize',
+                    status === s ? 'bg-foreground text-background' : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  )}>
+                  {s === 'in_progress' ? 'Active' : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Context</Label>
@@ -290,19 +316,15 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
               </Select>
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Urgent</Label>
-              <button
-                type="button"
-                onClick={() => setPriority(priority === 'p1' ? 'p3' : 'p1')}
-                className={cn(
-                  'mt-1.5 h-10 w-full rounded-md text-[13px] font-medium transition-colors inline-flex items-center justify-center gap-1.5',
-                  priority === 'p1'
-                    ? 'bg-accent/10 text-accent border border-accent/30'
-                    : 'bg-secondary text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {priority === 'p1' ? <><span className="w-2 h-2 rounded-full bg-accent" />Urgent</> : 'Not urgent'}
-              </button>
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+                <SelectTrigger className={cn('mt-1.5 h-10 bg-secondary border-0 text-[13px]', priority === 'p1' && 'text-accent')}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(['p1','p2','p3','p4'] as TaskPriority[]).map((p) => (
+                    <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Energy</Label>
@@ -320,6 +342,18 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
             </div>
           </div>
           <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled date</Label>
+                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)}
+                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled time</Label>
+                <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
+                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
+              </div>
+            </div>
             <div>
               <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Due date</Label>
               <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)}

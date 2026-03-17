@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { getTodayInTz, getDayBoundsUTC } from '@/lib/timezone';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +7,7 @@ import { TaskCard } from '@/components/TaskCard';
 import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Trash2, Archive, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Trash2, Archive, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import type { Task, TaskContext, TaskPriority } from '@/lib/types';
 import { CONTEXT_LABELS, PRIORITY_LABELS, CONTEXTS } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,9 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [rolledOver, setRolledOver] = useState(false);
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickAdding, setQuickAdding] = useState(false);
+  const quickInputRef = useRef<HTMLInputElement>(null);
 
   const tz = profile?.timezone || 'America/New_York';
   const today = getTodayInTz(tz);
@@ -84,7 +87,15 @@ export default function Tasks() {
       query = query.lte('due_date', end).gte('due_date', start);
     }
     if (timeFilter === 'someday') query = query.is('due_date', null).is('scheduled_date', null);
-    const { data } = await query;
+    if (timeFilter === 'week') {
+      const { start } = getDayBoundsUTC(tz);
+      const endOfWeek = new Date(start);
+      endOfWeek.setUTCDate(endOfWeek.getUTCDate() + (7 - endOfWeek.getUTCDay()));
+      endOfWeek.setUTCHours(23, 59, 59, 999);
+      query = query.gte('due_date', start).lte('due_date', endOfWeek.toISOString());
+    }
+    const { data, error } = await query;
+    if (error) toast.error(error.message);
     setTasks((data as Task[]) || []);
     setLoading(false);
   }, [user, contextFilter, priorityFilter, search, timeFilter, tz]);
@@ -103,10 +114,11 @@ export default function Tasks() {
 
   const fetchArchived = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks').select('*').eq('user_id', user.id)
       .eq('status', 'archived')
       .order('updated_at', { ascending: false }).limit(50);
+    if (error) toast.error(error.message);
     setArchivedTasks((data as Task[]) || []);
   }, [user]);
 
@@ -115,6 +127,42 @@ export default function Tasks() {
     fetchProjects();
     fetchArchived();
   }, [rolloverTasks, fetchTasks, fetchProjects, fetchArchived]);
+
+  // Refresh when a task is created via FAB/capture
+  useEffect(() => {
+    const handler = () => { fetchTasks(); fetchArchived(); };
+    window.addEventListener('gigi:task-created', handler);
+    return () => window.removeEventListener('gigi:task-created', handler);
+  }, [fetchTasks, fetchArchived]);
+
+  const handleArchive = async (taskId: string) => {
+    const { error } = await supabase.from('tasks').update({ status: 'archived' }).eq('id', taskId);
+    if (error) toast.error(error.message);
+    else { fetchTasks(); fetchArchived(); toast.success('Archived'); }
+  };
+
+  const handleDelete = async (task: Task) => {
+    if (!confirm(`Delete "${task.title}"?`)) return;
+    const { error } = await supabase.from('tasks').delete().eq('id', task.id);
+    if (error) toast.error(error.message);
+    else { fetchTasks(); fetchArchived(); toast.success('Deleted'); }
+  };
+
+  const handleQuickAdd = async () => {
+    if (!user || !quickTitle.trim()) return;
+    setQuickAdding(true);
+    const { error } = await supabase.from('tasks').insert({
+      user_id: user.id,
+      title: quickTitle.trim(),
+      status: 'todo',
+      priority: 'p3',
+      context: 'personal',
+      energy_type: 'shallow',
+    });
+    if (error) toast.error(error.message);
+    else { setQuickTitle(''); fetchTasks(); toast.success('Task added'); }
+    setQuickAdding(false);
+  };
 
   const bulkDelete = async () => {
     if (selectedIds.size === 0) return;
@@ -160,7 +208,7 @@ export default function Tasks() {
         <div className="space-y-px">
           {sectionTasks.map((t) => (
             <div key={t.id}>
-              <TaskCard task={t} boardName={t.board_id ? boards[t.board_id] : undefined} onUpdate={fetchTasks} onEdit={(task) => setEditTask(task)} />
+              <TaskCard task={t} boardName={t.board_id ? boards[t.board_id] : undefined} onUpdate={fetchTasks} onEdit={(task) => setEditTask(task)} onArchive={handleArchive} onDelete={(id) => handleDelete(tasks.find(x => x.id === id)!)} />
               {t.project_id && projects[t.project_id] && (
                 <div className="pl-10 -mt-1 mb-1">
                   <span className="text-[10px] text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded">
@@ -243,6 +291,22 @@ export default function Tasks() {
         </div>
       </div>
 
+      {/* Quick add */}
+      <div className="flex gap-2 mb-6">
+        <Input
+          ref={quickInputRef}
+          value={quickTitle}
+          onChange={(e) => setQuickTitle(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
+          placeholder="Add a task…"
+          className="h-10 bg-secondary border-0 text-[13px] flex-1"
+          disabled={quickAdding}
+        />
+        <Button size="sm" className="h-10 px-3" onClick={handleQuickAdd} disabled={!quickTitle.trim() || quickAdding}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Segmented List */}
       {timeFilter === 'all' && !search ? (
         <>
@@ -256,7 +320,7 @@ export default function Tasks() {
         <div className="space-y-px">
           {tasks.map((t) => (
             <div key={t.id}>
-              <TaskCard task={t} boardName={t.board_id ? boards[t.board_id] : undefined} onUpdate={fetchTasks} onEdit={(task) => setEditTask(task)} />
+              <TaskCard task={t} boardName={t.board_id ? boards[t.board_id] : undefined} onUpdate={fetchTasks} onEdit={(task) => setEditTask(task)} onArchive={handleArchive} onDelete={(id) => handleDelete(tasks.find(x => x.id === id)!)} />
               {t.project_id && projects[t.project_id] && (
                 <div className="pl-10 -mt-1 mb-1">
                   <span className="text-[10px] text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded">
@@ -316,7 +380,7 @@ export default function Tasks() {
         </section>
       )}
 
-      <TaskEditDialog task={editTask} open={!!editTask} onOpenChange={(open) => !open && setEditTask(null)} onSaved={() => { fetchTasks(); fetchArchived(); }} />
+      <TaskEditDialog task={editTask} open={!!editTask} onOpenChange={(open) => !open && setEditTask(null)} onSaved={() => { fetchTasks(); fetchArchived(); }} onDelete={handleDelete} />
     </div>
   );
 }
