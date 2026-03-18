@@ -11,8 +11,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY_MAIN = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY_MAIN) throw new Error("GEMINI_API_KEY not configured");
 
     const authHeader = req.headers.get("Authorization");
     const supabase = createClient(
@@ -54,8 +54,8 @@ serve(async (req) => {
     // LinkedIn lookup via native Gemini API with Google Search grounding
     let resolvedLinkedinUrl = person_linkedin_url || null;
     if (!resolvedLinkedinUrl) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-      if (GEMINI_API_KEY) {
+      if (GEMINI_API_KEY_MAIN) {
+        const GEMINI_API_KEY = GEMINI_API_KEY_MAIN;
         try {
           const searchQuery = person_company
             ? `LinkedIn profile URL for ${person_name} at ${person_company} site:linkedin.com/in`
@@ -119,83 +119,53 @@ ${eventSummary ? `- Context: ${eventSummary}` : ""}
 
 Go deep on what this person actually does, their company's current situation, and what would make for genuinely interesting conversation. Focus ONLY on ${person_name}.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "coffee_chat_brief",
-              description: "Return a structured coffee chat briefing with deep research",
-              parameters: {
-                type: "object",
-                properties: {
-                  background_summary: {
-                    type: "string",
-                    description: "4-5 sentence rich professional background: role, what they/their company actually do, career arc, current focus areas",
-                  },
-                  person_role: {
-                    type: "string",
-                    description: "Their current role/title with company, e.g. 'VP of Engineering at Acme Corp'",
-                  },
-                  talking_points: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        topic: { type: "string", description: "Short topic label (2-5 words)" },
-                        detail: { type: "string", description: "A specific conversation opener or question you can say out loud, referencing something concrete about their work" },
-                      },
-                      required: ["topic", "detail"],
-                      additionalProperties: false,
+    const aiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY_MAIN}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: {
+            response_mime_type: "application/json",
+            response_schema: {
+              type: "object",
+              properties: {
+                background_summary: { type: "string" },
+                person_role: { type: "string" },
+                talking_points: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      topic: { type: "string" },
+                      detail: { type: "string" },
                     },
-                    description: "Exactly 5 talking points with specific, actionable conversation openers",
-                    minItems: 5,
-                    maxItems: 5,
-                  },
-                  linkedin_url: {
-                    type: "string",
-                    description: "LinkedIn profile URL ONLY if provided or highly confident. Must start with https://www.linkedin.com/in/. Empty string if unsure.",
-                  },
-                  key_questions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        question: { type: "string", description: "A thoughtful question to ask them" },
-                        why: { type: "string", description: "One sentence on why this question is worth asking" },
-                      },
-                      required: ["question", "why"],
-                      additionalProperties: false,
-                    },
-                    description: "Exactly 3 high-value questions to ask, each with a reason why",
-                    minItems: 3,
-                    maxItems: 3,
-                  },
-                  confidence_note: {
-                    type: "string",
-                    description: "Brief note on confidence level in accuracy",
+                    required: ["topic", "detail"],
                   },
                 },
-                required: ["background_summary", "person_role", "talking_points", "key_questions"],
-                additionalProperties: false,
+                linkedin_url: { type: "string", nullable: true },
+                key_questions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      question: { type: "string" },
+                      why: { type: "string" },
+                    },
+                    required: ["question", "why"],
+                  },
+                },
+                confidence_note: { type: "string", nullable: true },
               },
+              required: ["background_summary", "person_role", "talking_points", "key_questions"],
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "coffee_chat_brief" } },
-      }),
-    });
+        }),
+      }
+    );
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
@@ -204,22 +174,16 @@ Go deep on what this person actually does, their company's current situation, an
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      throw new Error("AI gateway error");
+      console.error("Gemini API error:", aiResponse.status, errText);
+      throw new Error("Gemini API error");
     }
 
     const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in AI response");
+    const raw = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error("No content in Gemini response");
 
-    const brief = JSON.parse(toolCall.function.arguments);
+    const brief = JSON.parse(raw);
 
     // Validate LinkedIn URL - must be a proper linkedin.com/in/ URL
     const validateLinkedInUrl = (url: string | undefined | null): string | null => {

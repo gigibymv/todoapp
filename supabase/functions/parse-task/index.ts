@@ -10,8 +10,8 @@ serve(async (req) => {
 
   try {
     const { text, timezone } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const tz = timezone || "America/New_York";
     const now = new Date();
@@ -19,18 +19,7 @@ serve(async (req) => {
     const dayOfWeek = now.toLocaleDateString("en-US", { weekday: "long", timeZone: tz });
     const currentTime = now.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a task parser. Today is ${dayOfWeek}, ${today}. The current time is ${currentTime} (timezone: ${tz}).
+    const systemPrompt = `You are a task parser. Today is ${dayOfWeek}, ${today}. The current time is ${currentTime} (timezone: ${tz}).
 
 CRITICAL RULES:
 - ALWAYS extract a due_date. If the user says "tomorrow", "next week", "Monday", "this afternoon", etc., convert to an ISO 8601 datetime.
@@ -40,61 +29,55 @@ CRITICAL RULES:
 - NEVER put date/time information in the title. The title should be the clean action only.
 - If the user mentions a location or place (e.g. "at Starbucks", "in the office", "at 123 Main St", "chez le dentiste"), extract it into the "location" field and remove it from the title.
 - Available contexts: work, mba, personal, finance, health, legal.
-- Return ONLY the function call.`,
-          },
-          { role: "user", content: text },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "parse_task",
-              description: "Parse a natural language task into structured metadata",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string", description: "Clean task title" },
-                  context: { type: "string", enum: ["work", "mba", "personal", "finance", "health", "legal"] },
-                  priority: { type: "string", enum: ["p1", "p2", "p3", "p4"] },
-                  energy_type: { type: "string", enum: ["deep_work", "shallow", "admin", "quick_win"] },
-                  due_date: { type: "string", description: "ISO 8601 datetime or null" },
-                  estimated_duration_min: { type: "number", description: "Estimated minutes" },
-                  recurrence_rule: { type: "string", description: "RRULE string or null" },
-                  tags: { type: "array", items: { type: "string" } },
-                  project_name: { type: "string", description: "Suggested project name or null" },
-                  location: { type: "string", description: "Location or place mentioned by the user, or null" },
-                },
-                required: ["title", "context", "priority", "energy_type"],
-                additionalProperties: false,
+- Return ONLY valid JSON matching the schema, no markdown, no explanation.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text }] }],
+          generationConfig: {
+            response_mime_type: "application/json",
+            response_schema: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                context: { type: "string", enum: ["work", "mba", "personal", "finance", "health", "legal"] },
+                priority: { type: "string", enum: ["p1", "p2", "p3", "p4"] },
+                energy_type: { type: "string", enum: ["deep_work", "shallow", "admin", "quick_win"] },
+                due_date: { type: "string", nullable: true },
+                estimated_duration_min: { type: "number", nullable: true },
+                recurrence_rule: { type: "string", nullable: true },
+                tags: { type: "array", items: { type: "string" } },
+                project_name: { type: "string", nullable: true },
+                location: { type: "string", nullable: true },
               },
+              required: ["title", "context", "priority", "energy_type"],
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "parse_task" } },
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
+      const t = await response.text();
+      console.error("Gemini error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited, please try again." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI error:", response.status, t);
-      throw new Error("AI gateway error");
+      throw new Error("Gemini API error");
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in response");
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error("No content in Gemini response");
 
-    const parsed = JSON.parse(toolCall.function.arguments);
+    const parsed = JSON.parse(raw);
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

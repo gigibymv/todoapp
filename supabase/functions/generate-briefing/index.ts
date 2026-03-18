@@ -8,16 +8,6 @@ const corsHeaders = {
 
 const SYSTEM_PROMPT = `You are my operational Chief of Staff. You produce a CEO-grade daily briefing — not prose, not summaries.
 
-You MUST return valid JSON matching this exact structure:
-{
-  "must_do": [{"task_id": "uuid or null", "title": "string", "reason": "one sentence", "time_block": "e.g. 9:00-10:30"}],
-  "should_do": [{"task_id": "uuid or null", "title": "string", "reason": "one sentence"}],
-  "skip": [{"task_id": "uuid or null", "title": "string", "reason": "one sentence"}],
-  "prepare_tomorrow": [{"action": "concrete action, no vague verbs"}],
-  "energy_sequence": [{"time": "8:00", "activity": "what to do", "type": "deep|shallow|rest"}],
-  "intention": "One decisive sentence for today's focus"
-}
-
 RULES:
 - must_do: 2-4 items max. Only what truly moves the needle.
 - skip: Items that are noise, low-leverage, or should wait. Be honest.
@@ -27,7 +17,7 @@ RULES:
 - Be decisive. Short sentences. No consultant language. No pleasantries.
 - If overdue tasks exist, flag them in must_do with reason explaining urgency.
 - If a task is P4/someday, it goes in skip unless there's a specific reason today.
-- Return ONLY the JSON object. No markdown. No explanation. No wrapping.`;
+- Return ONLY valid JSON matching the schema.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -35,8 +25,8 @@ serve(async (req) => {
 
   try {
     const { tasks, display_name, timezone } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const tz = timezone || "America/New_York";
     const now = new Date();
@@ -59,50 +49,92 @@ ${taskSummary || "No tasks."}
 
 Generate the CEO briefing JSON.`;
 
+    const taskItemSchema = {
+      type: "object",
+      properties: {
+        task_id: { type: "string", nullable: true },
+        title: { type: "string" },
+        reason: { type: "string" },
+      },
+      required: ["title", "reason"],
+    };
+
     const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userMessage },
-          ],
-          stream: false,
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ role: "user", parts: [{ text: userMessage }] }],
+          generationConfig: {
+            response_mime_type: "application/json",
+            response_schema: {
+              type: "object",
+              properties: {
+                must_do: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      task_id: { type: "string", nullable: true },
+                      title: { type: "string" },
+                      reason: { type: "string" },
+                      time_block: { type: "string", nullable: true },
+                    },
+                    required: ["title", "reason"],
+                  },
+                },
+                should_do: { type: "array", items: taskItemSchema },
+                skip: { type: "array", items: taskItemSchema },
+                prepare_tomorrow: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { action: { type: "string" } },
+                    required: ["action"],
+                  },
+                },
+                energy_sequence: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      time: { type: "string" },
+                      activity: { type: "string" },
+                      type: { type: "string", enum: ["deep", "shallow", "rest"] },
+                    },
+                    required: ["time", "activity", "type"],
+                  },
+                },
+                intention: { type: "string" },
+              },
+              required: ["must_do", "should_do", "skip", "prepare_tomorrow", "energy_sequence", "intention"],
+            },
+          },
         }),
       }
     );
 
     if (!response.ok) {
+      const t = await response.text();
+      console.error("Gemini error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited, try again later." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw new Error("Gemini API error");
     }
 
     const result = await response.json();
-    const content = result.choices?.[0]?.message?.content || "{}";
-    
-    // Parse the JSON, stripping any markdown fences
+    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error("No content in Gemini response");
+
     let parsed;
     try {
-      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      parsed = JSON.parse(cleaned);
+      parsed = JSON.parse(raw);
     } catch {
-      console.error("Failed to parse AI JSON:", content);
+      console.error("Failed to parse Gemini JSON:", raw);
       parsed = {
         must_do: [], should_do: [], skip: [],
         prepare_tomorrow: [], energy_sequence: [],
