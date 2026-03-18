@@ -20,8 +20,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
   const [captureOpen, setCaptureOpen] = useState(false);
 
-  if (location.pathname === '/focus') return <>{children}</>;
-
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
@@ -30,7 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <Type className="h-[18px] w-[18px] shrink-0 text-accent" strokeWidth={1.5} />
           <span className="hidden group-hover:inline text-sm font-bold tracking-[-0.02em] ml-2.5">GIGI</span>
         </div>
-        <nav className="flex-1 py-3">
+        <nav className="py-3">
           {NAV_ITEMS.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
             return (

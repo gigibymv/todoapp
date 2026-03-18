@@ -122,6 +122,7 @@ export default function CoffeeChats() {
     person_name: string;
     person_company?: string;
     person_linkedin_url?: string;
+    existing_brief_id?: string;
   }) => {
     if (!user) return;
     setPreparing(opts.calendar_event_id || 'manual');
@@ -134,7 +135,11 @@ export default function CoffeeChats() {
           Authorization: `Bearer ${session.data.session?.access_token}`,
         },
         body: JSON.stringify({
-          ...opts,
+          calendar_event_id: opts.calendar_event_id,
+          person_name: opts.person_name,
+          person_company: opts.person_company,
+          person_linkedin_url: opts.person_linkedin_url,
+          existing_brief_id: opts.existing_brief_id,
           user_display_name: profile?.display_name || '',
         }),
       });
@@ -418,6 +423,23 @@ export default function CoffeeChats() {
                         </div>
                       )}
 
+                      {/* Key Questions */}
+                      {questions.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-2">
+                            Key Questions
+                          </h4>
+                          <div className="space-y-2">
+                            {questions.map((q, i) => (
+                              <div key={i} className="pl-3 border-l-2 border-border">
+                                <p className="text-[12px] font-medium">{q.question}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{q.why}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* LinkedIn link */}
                       {brief.person_linkedin_url && (
                         <a
@@ -429,6 +451,12 @@ export default function CoffeeChats() {
                           <Linkedin className="h-3.5 w-3.5" />
                           View LinkedIn Profile
                         </a>
+                      )}
+
+                      {(brief.research_json as any)?.confidence_note && (
+                        <p className="text-[10px] text-muted-foreground/50 italic">
+                          {(brief.research_json as any).confidence_note}
+                        </p>
                       )}
 
                       <div className="flex justify-end gap-1 pt-1">
@@ -443,6 +471,7 @@ export default function CoffeeChats() {
                               person_name: brief.person_name || 'Unknown',
                               person_company: brief.person_company || undefined,
                               person_linkedin_url: brief.person_linkedin_url || undefined,
+                              existing_brief_id: brief.id,
                             });
                           }}
                         >

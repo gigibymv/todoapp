@@ -194,7 +194,8 @@ export default function Projects() {
 
         {/* Kanban with drag & drop */}
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="overflow-x-auto -mx-5 px-5 md:mx-0 md:px-0">
+            <div className="grid grid-cols-3 gap-4 min-w-[480px]">
             {kanbanColumns.map(col => {
               const colTasks = filteredTasks.filter(t => t.status === col.key);
               return (
@@ -297,6 +298,7 @@ export default function Projects() {
                 </Droppable>
               );
             })}
+            </div>
           </div>
         </DragDropContext>
 

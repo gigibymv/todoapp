@@ -29,7 +29,7 @@ serve(async (req) => {
       });
     }
 
-    const { calendar_event_id, person_name, person_company, person_linkedin_url, user_display_name } = await req.json();
+    const { calendar_event_id, person_name, person_company, person_linkedin_url, user_display_name, existing_brief_id } = await req.json();
 
     if (!person_name) {
       return new Response(JSON.stringify({ error: "person_name is required" }), {
@@ -135,12 +135,27 @@ Go deep on what this person actually does, their company's current situation, an
                     type: "string",
                     description: "LinkedIn profile URL ONLY if provided or highly confident. Must start with https://www.linkedin.com/in/. Empty string if unsure.",
                   },
+                  key_questions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        question: { type: "string", description: "A thoughtful question to ask them" },
+                        why: { type: "string", description: "One sentence on why this question is worth asking" },
+                      },
+                      required: ["question", "why"],
+                      additionalProperties: false,
+                    },
+                    description: "Exactly 3 high-value questions to ask, each with a reason why",
+                    minItems: 3,
+                    maxItems: 3,
+                  },
                   confidence_note: {
                     type: "string",
                     description: "Brief note on confidence level in accuracy",
                   },
                 },
-                required: ["background_summary", "person_role", "talking_points"],
+                required: ["background_summary", "person_role", "talking_points", "key_questions"],
                 additionalProperties: false,
               },
             },
@@ -186,30 +201,40 @@ Go deep on what this person actually does, their company's current situation, an
 
     const validatedLinkedinUrl = validateLinkedInUrl(brief.linkedin_url) || validateLinkedInUrl(person_linkedin_url);
 
-    // Upsert into meeting_briefs
-    const { data: saved, error: saveError } = await supabase
-      .from("meeting_briefs")
-      .upsert(
-        {
-          user_id: user.id,
-          calendar_event_id: calendar_event_id || null,
-          person_name,
-          person_company: person_company || null,
-          person_linkedin_url: validatedLinkedinUrl,
-          person_role: brief.person_role,
-          background_summary: brief.background_summary,
-          talking_points_json: brief.talking_points,
-          research_json: brief,
-          status: "ready",
-        },
-        { onConflict: "id" }
-      )
-      .select()
-      .single();
+    const briefPayload = {
+      user_id: user.id,
+      calendar_event_id: calendar_event_id || null,
+      person_name,
+      person_company: person_company || null,
+      person_linkedin_url: validatedLinkedinUrl,
+      person_role: brief.person_role,
+      background_summary: brief.background_summary,
+      talking_points_json: brief.talking_points,
+      research_json: brief,
+      status: "ready",
+    };
 
-    if (saveError) {
-      console.error("Save error:", saveError);
-      // Still return the brief even if save fails
+    let saved: any = null;
+    if (existing_brief_id) {
+      // Regenerating — update in place
+      const { data, error: updateError } = await supabase
+        .from("meeting_briefs")
+        .update(briefPayload)
+        .eq("id", existing_brief_id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+      if (updateError) console.error("Update error:", updateError);
+      saved = data;
+    } else {
+      // New brief — insert
+      const { data, error: insertError } = await supabase
+        .from("meeting_briefs")
+        .insert(briefPayload)
+        .select()
+        .single();
+      if (insertError) console.error("Insert error:", insertError);
+      saved = data;
     }
 
     return new Response(JSON.stringify({ ...brief, id: saved?.id }), {

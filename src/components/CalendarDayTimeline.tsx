@@ -86,6 +86,7 @@ export function CalendarDayTimeline({
   const nowMin = isToday ? nowMinutesInTz(tz) : -1;
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const draggingIdRef = useRef<string | null>(null);
   const [dragOffsetMin, setDragOffsetMin] = useState(0);
   const dragStartY = useRef(0);
   const dragStartMin = useRef(0);
@@ -175,29 +176,31 @@ export function CalendarDayTimeline({
     dragStartY.current = e.clientY;
     dragStartMin.current = block.startMin;
     hasDragged.current = false;
+    draggingIdRef.current = block.id; // Bug A: set ref synchronously before React re-render
     setDraggingId(block.id);
     setDragOffsetMin(0);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); // Bug C: capture on currentTarget
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!draggingId) return;
+    if (!draggingIdRef.current) return; // Bug A: read ref, not stale state
     const dy = e.clientY - dragStartY.current;
     if (Math.abs(dy) > 5) hasDragged.current = true;
     const deltaMin = Math.round(dy / PX_PER_MIN / SNAP_MIN) * SNAP_MIN;
     setDragOffsetMin(deltaMin);
-  }, [draggingId]);
+  }, []);
 
   const handlePointerUp = useCallback(() => {
-    if (!draggingId) return;
+    if (!draggingIdRef.current) return; // Bug A: read ref
     if (hasDragged.current && dragOffsetMin !== 0) {
       const newStartMin = Math.max(HOUR_START * 60, Math.min(HOUR_END * 60 - 15, dragStartMin.current + dragOffsetMin));
       const newTime = minsToTimeStr(newStartMin);
-      onTaskTimeChange?.(draggingId, newTime);
+      onTaskTimeChange?.(draggingIdRef.current, newTime);
     }
+    draggingIdRef.current = null; // Bug A: clear ref
     setDraggingId(null);
     setDragOffsetMin(0);
-  }, [draggingId, dragOffsetMin, onTaskTimeChange]);
+  }, [dragOffsetMin, onTaskTimeChange]);
 
   if (allDayItems.length === 0 && visibleBlocks.length === 0) {
     return (
@@ -215,7 +218,7 @@ export function CalendarDayTimeline({
           {allDayItems.map(item => (
             <div
               key={item.id}
-              className="text-[12px] px-3 py-2 rounded-lg bg-accent/8 border border-accent/15 text-foreground/80 cursor-pointer hover:bg-accent/12 transition-colors"
+              className="text-[12px] px-3 py-2 rounded-lg bg-accent/15 border border-accent/20 text-foreground/80 cursor-pointer hover:bg-accent/20 transition-colors"
               onClick={() => item.raw && onEventClick?.(item.raw as CalendarEvent)}
             >
               <span className="font-medium">{item.label}</span>
@@ -232,6 +235,7 @@ export function CalendarDayTimeline({
         style={{ height: totalHeight }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         {/* Hour lines */}
         {hours.map(hMin => (
@@ -275,7 +279,8 @@ export function CalendarDayTimeline({
             <div
               key={block.id}
               className={cn(
-                'absolute left-12 right-1 rounded-lg border-l-3 px-3 py-1.5 transition-all',
+                'absolute left-12 right-1 rounded-lg border-l-[3px] px-3 py-1.5',
+                isDragging ? 'transition-none' : 'transition-all', // Bug B: no transition lag while dragging
                 isEvent
                   ? 'border-l-accent bg-accent/30 hover:bg-accent/38 cursor-pointer'
                   : cn(contextStyles(block.context).border, contextStyles(block.context).bg, contextStyles(block.context).hover, 'ring-1 ring-inset ring-current/5'),

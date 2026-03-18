@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Trash2, RefreshCw, Calendar, Plus, Link } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ArrowLeft, Trash2, RefreshCw, Calendar, Plus, Link, ChevronsUpDown, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +41,11 @@ export default function Settings() {
   const [newCalName, setNewCalName] = useState('');
   const [newCalUrl, setNewCalUrl] = useState('');
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [tzOpen, setTzOpen] = useState(false);
+  const allTimezones = useMemo(() => {
+    try { return (Intl as any).supportedValuesOf('timeZone') as string[]; }
+    catch { return ['America/New_York','America/Los_Angeles','America/Chicago','Europe/London','Europe/Paris','Asia/Tokyo','Asia/Shanghai','Australia/Sydney']; }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -198,20 +205,48 @@ export default function Settings() {
           </div>
           <div>
             <label className="text-[12px] text-muted-foreground mb-1 block">Timezone</label>
-            <Input value={profile.timezone || ''} className="h-9 bg-secondary border-0 text-[13px]"
-              onChange={e => setProfile({ ...profile, timezone: e.target.value })}
-              onBlur={() => save({ timezone: profile.timezone })} />
+            <Popover open={tzOpen} onOpenChange={setTzOpen}>
+              <PopoverTrigger asChild>
+                <button className="w-full h-9 flex items-center justify-between px-3 rounded-md bg-secondary text-[13px] text-left transition-colors hover:bg-secondary/80">
+                  <span className={cn(!profile.timezone && 'text-muted-foreground')}>{profile.timezone || 'Select timezone…'}</span>
+                  <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search timezone…" className="text-[13px]" />
+                  <CommandList className="max-h-[200px]">
+                    <CommandEmpty className="text-[13px] py-3 text-center text-muted-foreground">No timezone found.</CommandEmpty>
+                    {allTimezones.map(tz => (
+                      <CommandItem
+                        key={tz}
+                        value={tz}
+                        onSelect={() => {
+                          setProfile({ ...profile, timezone: tz });
+                          save({ timezone: tz });
+                          setTzOpen(false);
+                        }}
+                        className="text-[13px]"
+                      >
+                        <Check className={cn('mr-2 h-3.5 w-3.5', profile.timezone === tz ? 'opacity-100' : 'opacity-0')} />
+                        {tz}
+                      </CommandItem>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="text-[12px] text-muted-foreground mb-1 block">Work start</label>
               <Input type="time" value={profile.work_hours_start || '09:00'} className="h-9 bg-secondary border-0 text-[13px]"
-                onChange={e => save({ work_hours_start: e.target.value })} />
+                onBlur={e => save({ work_hours_start: e.target.value })} />
             </div>
             <div className="flex-1">
               <label className="text-[12px] text-muted-foreground mb-1 block">Work end</label>
               <Input type="time" value={profile.work_hours_end || '17:00'} className="h-9 bg-secondary border-0 text-[13px]"
-                onChange={e => save({ work_hours_end: e.target.value })} />
+                onBlur={e => save({ work_hours_end: e.target.value })} />
             </div>
           </div>
           <div>

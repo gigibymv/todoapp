@@ -9,6 +9,12 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        execArgv: ["--max-old-space-size=4096"],
+      },
+    },
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

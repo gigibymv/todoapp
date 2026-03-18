@@ -8,11 +8,12 @@ import { cn } from '@/lib/utils';
 import { format, addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar, FileText, LayoutList, LayoutGrid, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar, FileText, LayoutList, LayoutGrid, Trash2, RefreshCw, Plus } from 'lucide-react';
 import { getTodayInTz, getDayBoundsUTC } from '@/lib/timezone';
 import { CalendarDayTimeline } from '@/components/CalendarDayTimeline';
 import { TaskEditDialog } from '@/components/TaskEditDialog';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 function formatTimeInTz(isoStr: string, tz: string, fmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false }): string {
   return new Date(isoStr).toLocaleTimeString('en-US', { ...fmt, timeZone: tz });
@@ -41,15 +42,20 @@ interface CalendarEvent {
   calendar_link_id: string;
 }
 
+interface CalendarLink { id: string; name: string; ics_url: string; }
+
 export default function CalendarView() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<'agenda' | 'grid'>('agenda');
+  const [calLinks, setCalLinks] = useState<CalendarLink[]>([]);
+  const [syncing, setSyncing] = useState(false);
   const { profile } = useProfile();
   const tz = profile?.timezone || 'America/New_York';
 
@@ -75,6 +81,32 @@ export default function CalendarView() {
   }, [user, weekOffset, tz]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('calendar_links').select('id, name, ics_url').eq('user_id', user.id).eq('enabled', true).then(({ data }) => {
+      setCalLinks((data as CalendarLink[]) || []);
+    });
+  }, [user]);
+
+  const syncCalendars = useCallback(async () => {
+    if (!user || calLinks.length === 0) return;
+    setSyncing(true);
+    let synced = 0;
+    for (const link of calLinks) {
+      const { data, error } = await supabase.functions.invoke('sync-calendar', {
+        body: { calendar_link_id: link.id, ics_url: link.ics_url, user_id: user.id },
+      });
+      if (error || data?.error) {
+        toast.error(`Failed to sync "${link.name}"`);
+      } else {
+        synced += data.events_count ?? 0;
+      }
+    }
+    toast.success(`Synced ${synced} events`);
+    fetchData();
+    setSyncing(false);
+  }, [user, calLinks, fetchData]);
 
   const todayStr = getTodayInTz(tz);
 
@@ -144,6 +176,15 @@ export default function CalendarView() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {calLinks.length > 0 && (
+            <Button
+              variant="ghost" size="icon" className="h-8 w-8 mr-1"
+              onClick={syncCalendars} disabled={syncing}
+              title="Sync calendars"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
+            </Button>
+          )}
           <div className="flex items-center bg-secondary rounded-lg p-0.5 mr-2">
             <button
               onClick={() => setViewMode('agenda')}
@@ -238,6 +279,7 @@ export default function CalendarView() {
           })}
         </div>
       ) : (
+        <div className="overflow-x-auto -mx-2 px-2">
         <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden" style={{ minWidth: 560 }}>
           {days.map((day) => {
             const dayStr = dateToDayStr(day, tz);
@@ -284,6 +326,19 @@ export default function CalendarView() {
               </div>
             );
           })}
+        </div>
+        </div>
+      )}
+
+      {/* Empty state when no calendars connected */}
+      {calLinks.length === 0 && events.length === 0 && (
+        <div className="mt-12 text-center">
+          <Calendar className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">No calendars connected</p>
+          <p className="text-[12px] text-muted-foreground/60 mt-1 mb-4">Add an ICS link to see your events here</p>
+          <Button size="sm" variant="outline" className="text-[12px]" onClick={() => navigate('/settings')}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add calendar in Settings
+          </Button>
         </div>
       )}
 

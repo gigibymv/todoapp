@@ -16,7 +16,6 @@ import CalendarView from "@/pages/CalendarView";
 import CoffeeChats from "@/pages/CoffeeChats";
 
 import Settings from "@/pages/Settings";
-import FocusMode from "@/pages/FocusMode";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,7 +46,6 @@ function AppRoutes() {
       <Route path="/welcome" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/onboarding" element={<OnboardingRoute />} />
-      <Route path="/focus" element={<ProtectedRoute><FocusMode /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/" element={<ProtectedRoute><Today /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />

@@ -50,13 +50,28 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Deduplicate by uid (recurring events share UIDs)
+    // Preserve user-set state (dismissed, completed_at, brief_action) before wiping events
+    const { data: existingEvents } = await supabase
+      .from("calendar_events")
+      .select("uid, dtstart, dismissed, completed_at, brief_action")
+      .eq("calendar_link_id", calendar_link_id);
+
+    const stateMap = new Map<string, { dismissed: boolean; completed_at: string | null; brief_action: string | null }>();
+    (existingEvents || []).forEach((e: any) => {
+      if (e.dismissed || e.completed_at || e.brief_action) {
+        stateMap.set(`${e.uid}||${e.dtstart}`, {
+          dismissed: e.dismissed,
+          completed_at: e.completed_at,
+          brief_action: e.brief_action,
+        });
+      }
+    });
+
+    // Deduplicate by uid+dtstart so recurring events keep all occurrences
     const uidMap = new Map<string, any>();
     events.forEach(e => {
-      const existing = uidMap.get(e.uid);
-      if (!existing || new Date(e.dtstart) > new Date(existing.dtstart)) {
-        uidMap.set(e.uid, e);
-      }
+      const key = `${e.uid}||${e.dtstart}`;
+      uidMap.set(key, e);
     });
 
     const rows = Array.from(uidMap.values()).map(e => ({
@@ -76,7 +91,7 @@ serve(async (req) => {
 
     if (rows.length > 0) {
       await supabase.from("calendar_events").delete().eq("calendar_link_id", calendar_link_id);
-      
+
       let inserted = 0;
       for (let i = 0; i < rows.length; i += 100) {
         const chunk = rows.slice(i, i + 100);
@@ -85,6 +100,22 @@ serve(async (req) => {
         else inserted += chunk.length;
       }
       console.log("Successfully inserted:", inserted);
+
+      // Restore user-set state (dismissed, completed_at, brief_action)
+      if (stateMap.size > 0) {
+        const { data: newEvents } = await supabase
+          .from("calendar_events")
+          .select("id, uid, dtstart")
+          .eq("calendar_link_id", calendar_link_id);
+
+        for (const ev of (newEvents || [])) {
+          const key = `${ev.uid}||${ev.dtstart}`;
+          const state = stateMap.get(key);
+          if (state) {
+            await supabase.from("calendar_events").update(state).eq("id", ev.id);
+          }
+        }
+      }
     }
 
     // Update last_synced_at
@@ -100,6 +131,14 @@ serve(async (req) => {
     });
   }
 });
+
+function unescapeICS(str: string): string {
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\,/g, ',')
+    .replace(/\\;/g, ';')
+    .replace(/\\\\/g, '\\');
+}
 
 // Simple ICS parser
 function parseICS(text: string) {
@@ -136,9 +175,9 @@ function parseICS(text: string) {
       const value = line.slice(colonIdx + 1);
 
       if (key === "UID" || key.startsWith("UID;")) current.uid = value;
-      else if (key === "SUMMARY" || key.startsWith("SUMMARY;")) current.summary = value;
-      else if (key === "DESCRIPTION" || key.startsWith("DESCRIPTION;")) current.description = value.slice(0, 500);
-      else if (key === "LOCATION" || key.startsWith("LOCATION;")) current.location = value;
+      else if (key === "SUMMARY" || key.startsWith("SUMMARY;")) current.summary = unescapeICS(value);
+      else if (key === "DESCRIPTION" || key.startsWith("DESCRIPTION;")) current.description = unescapeICS(value).slice(0, 500);
+      else if (key === "LOCATION" || key.startsWith("LOCATION;")) current.location = unescapeICS(value);
       else if (key === "RRULE" || key.startsWith("RRULE;")) current.rrule = value;
       else if (key.startsWith("DTSTART")) {
         let tzid = extractTZID(key);
