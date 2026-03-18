@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useRef } from 'react'; // kept for containerRef
 import { cn } from '@/lib/utils';
 import { nowMinutesInTz } from '@/lib/timezone';
 import { MapPin } from 'lucide-react';
@@ -29,22 +29,18 @@ interface TimeBlock {
 }
 
 interface CalendarDayTimelineProps {
-  dayStr: string;
   events: CalendarEvent[];
   tasks: Task[];
   tz: string;
   isToday: boolean;
   onEventClick?: (event: CalendarEvent) => void;
   onTaskClick?: (task: Task) => void;
-  onTaskTimeChange?: (taskId: string, newTime: string) => void;
 }
 
 const PX_PER_MIN = 1.6;
 const MIN_BLOCK_H = 52;
 const HOUR_START = 6;
 const HOUR_END = 23;
-const SNAP_MIN = 15; // snap to 15-minute increments
-
 function getTimeInTz(isoStr: string, tz: string): { hours: number; minutes: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz, hour: 'numeric', minute: 'numeric', hour12: false,
@@ -62,12 +58,6 @@ function minsToLabel(mins: number): string {
   return m === 0 ? `${h12} ${ampm}` : `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
-function minsToTimeStr(mins: number): string {
-  const h = Math.floor(mins / 60) % 24;
-  const m = mins % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-}
-
 function contextStyles(ctx?: string) {
   const map: Record<string, { border: string; bg: string; hover: string }> = {
     work: { border: 'border-l-gigi-work', bg: 'bg-gigi-work/25', hover: 'hover:bg-gigi-work/32' },
@@ -81,16 +71,10 @@ function contextStyles(ctx?: string) {
 }
 
 export function CalendarDayTimeline({
-  dayStr, events, tasks, tz, isToday, onEventClick, onTaskClick, onTaskTimeChange,
+  events, tasks, tz, isToday, onEventClick, onTaskClick,
 }: CalendarDayTimelineProps) {
   const nowMin = isToday ? nowMinutesInTz(tz) : -1;
   const containerRef = useRef<HTMLDivElement>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const draggingIdRef = useRef<string | null>(null);
-  const [dragOffsetMin, setDragOffsetMin] = useState(0);
-  const dragStartY = useRef(0);
-  const dragStartMin = useRef(0);
-  const hasDragged = useRef(false);
 
   // Build time blocks
   const allDayItems: TimeBlock[] = [];
@@ -170,38 +154,6 @@ export function CalendarDayTimeline({
   const getHeight = (startMin: number, endMin: number) =>
     Math.max(MIN_BLOCK_H, (Math.min(endMin, rangeEnd) - Math.max(startMin, rangeStart)) * PX_PER_MIN);
 
-  // Drag handlers
-  const handlePointerDown = useCallback((e: React.PointerEvent, block: TimeBlock) => {
-    if (block.type !== 'task') return;
-    e.preventDefault(); // prevent browser scroll from competing with drag
-    dragStartY.current = e.clientY;
-    dragStartMin.current = block.startMin;
-    hasDragged.current = false;
-    draggingIdRef.current = block.id; // Bug A: set ref synchronously before React re-render
-    setDraggingId(block.id);
-    setDragOffsetMin(0);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); // Bug C: capture on currentTarget
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!draggingIdRef.current) return; // Bug A: read ref, not stale state
-    const dy = e.clientY - dragStartY.current;
-    if (Math.abs(dy) > 5) hasDragged.current = true;
-    const deltaMin = Math.round(dy / PX_PER_MIN / SNAP_MIN) * SNAP_MIN;
-    setDragOffsetMin(deltaMin);
-  }, []);
-
-  const handlePointerUp = useCallback(() => {
-    if (!draggingIdRef.current) return; // Bug A: read ref
-    if (hasDragged.current && dragOffsetMin !== 0) {
-      const newStartMin = Math.max(HOUR_START * 60, Math.min(HOUR_END * 60 - 15, dragStartMin.current + dragOffsetMin));
-      const newTime = minsToTimeStr(newStartMin);
-      onTaskTimeChange?.(draggingIdRef.current, newTime);
-    }
-    draggingIdRef.current = null; // Bug A: clear ref
-    setDraggingId(null);
-    setDragOffsetMin(0);
-  }, [dragOffsetMin, onTaskTimeChange]);
 
   if (allDayItems.length === 0 && visibleBlocks.length === 0) {
     return (
@@ -262,37 +214,23 @@ export function CalendarDayTimeline({
 
         {/* Event & task blocks */}
         {visibleBlocks.map(block => {
-          const isDragging = draggingId === block.id;
-          const effectiveStartMin = isDragging ? dragStartMin.current + dragOffsetMin : block.startMin;
-          const duration = block.endMin - block.startMin;
-          const effectiveEndMin = effectiveStartMin + duration;
-          
-          const top = getTop(effectiveStartMin);
-          const height = getHeight(effectiveStartMin, effectiveEndMin);
+          const top = getTop(block.startMin);
+          const height = getHeight(block.startMin, block.endMin);
           const isEvent = block.type === 'event';
           const isPast = isToday && block.endMin < nowMin;
-          const isTask = block.type === 'task';
 
           return (
             <div
               key={block.id}
               className={cn(
-                'absolute left-12 right-1 rounded-lg border-l-[3px] px-3 py-1.5',
-                isDragging ? 'transition-none' : 'transition-all', // Bug B: no transition lag while dragging
+                'absolute left-12 right-1 rounded-lg border-l-[3px] px-3 py-1.5 transition-all',
                 isEvent
                   ? 'border-l-accent bg-accent/30 hover:bg-accent/38 cursor-pointer'
-                  : cn(contextStyles(block.context).border, contextStyles(block.context).bg, contextStyles(block.context).hover, 'ring-1 ring-inset ring-current/5'),
+                  : cn(contextStyles(block.context).border, contextStyles(block.context).bg, contextStyles(block.context).hover, 'ring-1 ring-inset ring-current/5 cursor-pointer'),
                 isPast && 'opacity-40',
-                isTask && 'cursor-grab active:cursor-grabbing touch-none',
-                isDragging && 'z-40 shadow-lg ring-2 ring-accent/40 opacity-90',
               )}
               style={{ top, height, minHeight: MIN_BLOCK_H }}
-              onPointerDown={(e) => isTask ? handlePointerDown(e, block) : undefined}
-              onPointerMove={(e) => isTask ? handlePointerMove(e) : undefined}
-              onPointerUp={() => isTask ? handlePointerUp() : undefined}
-              onPointerCancel={() => isTask ? handlePointerUp() : undefined}
               onClick={() => {
-                if (hasDragged.current) return;
                 if (isEvent) onEventClick?.(block.raw as CalendarEvent);
                 else onTaskClick?.(block.raw as Task);
               }}
@@ -300,10 +238,7 @@ export function CalendarDayTimeline({
               <div className="flex items-center gap-2 min-w-0">
                 <p className="text-[12px] font-medium text-foreground/85 truncate">{block.label}</p>
                 <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums shrink-0 ml-auto">
-                  {isDragging
-                    ? `${minsToLabel(effectiveStartMin)}–${minsToLabel(effectiveEndMin)}`
-                    : `${minsToLabel(block.startMin)}–${minsToLabel(block.endMin)}`
-                  }
+                  {`${minsToLabel(block.startMin)}–${minsToLabel(block.endMin)}`}
                 </span>
               </div>
               {block.location && height > 44 && (

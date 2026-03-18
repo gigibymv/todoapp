@@ -176,7 +176,44 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
             <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5 h-10 bg-secondary border-0 text-[13px]" />
           </div>
 
-          {/* Location — prominent position */}
+          {/* Dates — right below title for visibility */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled date</Label>
+                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)}
+                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled time</Label>
+                <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
+                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Due date</Label>
+                <Input type="date" value={dueDate.slice(0, 10)} onChange={(e) => setDueDate(e.target.value + (dueDate.length >= 16 ? dueDate.slice(10) : 'T00:00'))}
+                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Due time</Label>
+                <Input type="time" value={dueDate.length >= 16 ? dueDate.slice(11, 16) : ''} onChange={(e) => setDueDate((dueDate.slice(0, 10) || new Date().toISOString().slice(0, 10)) + 'T' + e.target.value)}
+                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Repeat</Label>
+              <Select value={recurrence || 'none'} onValueChange={(v) => setRecurrence(v === 'none' ? '' : v)}>
+                <SelectTrigger className="mt-1.5 h-10 bg-secondary border-0 text-[13px]"><SelectValue placeholder="No repeat" /></SelectTrigger>
+                <SelectContent>
+                  {RECURRENCE_OPTIONS.map(r => <SelectItem key={r.value || 'none'} value={r.value || 'none'}>{r.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Location */}
           <div>
             <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Location</Label>
             <div className="relative mt-1.5">
@@ -339,34 +376,6 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
               <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Duration</Label>
               <Input type="number" value={estimatedMin} onChange={(e) => setEstimatedMin(e.target.value)}
                 className="mt-1.5 h-10 bg-secondary border-0 text-[13px]" placeholder="min" />
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled date</Label>
-                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)}
-                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
-              </div>
-              <div>
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled time</Label>
-                <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
-                  className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Due date</Label>
-              <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1.5 h-10 bg-secondary border-0 text-[13px] w-full" />
-            </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Repeat</Label>
-              <Select value={recurrence || 'none'} onValueChange={(v) => setRecurrence(v === 'none' ? '' : v)}>
-                <SelectTrigger className="mt-1.5 h-10 bg-secondary border-0 text-[13px]"><SelectValue placeholder="No repeat" /></SelectTrigger>
-                <SelectContent>
-                  {RECURRENCE_OPTIONS.map(r => <SelectItem key={r.value || 'none'} value={r.value || 'none'}>{r.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <div className="flex items-center justify-between pt-3">

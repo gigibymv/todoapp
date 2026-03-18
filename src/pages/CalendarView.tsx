@@ -140,18 +140,6 @@ export default function CalendarView() {
   };
 
   // Handle drag-and-drop time change
-  const handleTaskTimeChange = useCallback(async (taskId: string, newTime: string) => {
-    // Optimistic update
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, scheduled_time: newTime } : t));
-    const { error } = await supabase.from('tasks').update({ scheduled_time: newTime }).eq('id', taskId);
-    if (error) {
-      toast.error('Failed to reschedule');
-      fetchData();
-    } else {
-      toast.success(`Moved to ${newTime}`);
-    }
-  }, [fetchData]);
-
   // Handle task deletion
   const handleDeleteTask = useCallback(async (task: Task) => {
     if (!confirm(`Delete "${task.title}"?`)) return;
@@ -264,14 +252,12 @@ export default function CalendarView() {
 
                 <div className={cn('px-2 py-2', isEmpty && 'py-0')}>
                   <CalendarDayTimeline
-                    dayStr={dayStr}
                     events={dayEvents}
                     tasks={dayTasks}
                     tz={tz}
                     isToday={isToday}
                     onEventClick={setSelectedEvent}
                     onTaskClick={setEditingTask}
-                    onTaskTimeChange={handleTaskTimeChange}
                   />
                 </div>
               </div>
