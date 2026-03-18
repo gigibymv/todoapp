@@ -173,6 +173,7 @@ export function CalendarDayTimeline({
   // Drag handlers
   const handlePointerDown = useCallback((e: React.PointerEvent, block: TimeBlock) => {
     if (block.type !== 'task') return;
+    e.preventDefault(); // prevent browser scroll from competing with drag
     dragStartY.current = e.clientY;
     dragStartMin.current = block.startMin;
     hasDragged.current = false;
@@ -285,7 +286,7 @@ export function CalendarDayTimeline({
                   ? 'border-l-accent bg-accent/30 hover:bg-accent/38 cursor-pointer'
                   : cn(contextStyles(block.context).border, contextStyles(block.context).bg, contextStyles(block.context).hover, 'ring-1 ring-inset ring-current/5'),
                 isPast && 'opacity-40',
-                isTask && 'cursor-grab active:cursor-grabbing',
+                isTask && 'cursor-grab active:cursor-grabbing touch-none',
                 isDragging && 'z-40 shadow-lg ring-2 ring-accent/40 opacity-90',
               )}
               style={{ top, height, minHeight: MIN_BLOCK_H }}
