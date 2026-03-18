@@ -186,24 +186,24 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
           {/* Dates */}
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              <div className="min-w-0">
                 <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled date</Label>
                 <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)}
                   className="mt-1.5 h-10 bg-secondary border border-border/40 text-[13px] w-full" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Scheduled time</Label>
                 <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
                   className="mt-1.5 h-10 bg-secondary border border-border/40 text-[13px] w-full" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              <div className="min-w-0">
                 <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Due date</Label>
                 <Input type="date" value={dueDate.slice(0, 10)} onChange={(e) => setDueDate(e.target.value + (dueDate.length >= 16 ? dueDate.slice(10) : 'T00:00'))}
                   className="mt-1.5 h-10 bg-secondary border border-border/40 text-[13px] w-full" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Due time</Label>
                 <Input type="time" value={dueDate.length >= 16 ? dueDate.slice(11, 16) : ''} onChange={(e) => setDueDate((dueDate.slice(0, 10) || new Date().toISOString().slice(0, 10)) + 'T' + e.target.value)}
                   className="mt-1.5 h-10 bg-secondary border border-border/40 text-[13px] w-full" />
