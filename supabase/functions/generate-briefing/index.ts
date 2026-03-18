@@ -49,16 +49,6 @@ ${taskSummary || "No tasks."}
 
 Generate the CEO briefing JSON.`;
 
-    const taskItemSchema = {
-      type: "object",
-      properties: {
-        task_id: { type: "string", nullable: true },
-        title: { type: "string" },
-        reason: { type: "string" },
-      },
-      required: ["title", "reason"],
-    };
-
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -69,48 +59,6 @@ Generate the CEO briefing JSON.`;
           contents: [{ role: "user", parts: [{ text: userMessage }] }],
           generationConfig: {
             response_mime_type: "application/json",
-            response_schema: {
-              type: "object",
-              properties: {
-                must_do: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      task_id: { type: "string", nullable: true },
-                      title: { type: "string" },
-                      reason: { type: "string" },
-                      time_block: { type: "string", nullable: true },
-                    },
-                    required: ["title", "reason"],
-                  },
-                },
-                should_do: { type: "array", items: taskItemSchema },
-                skip: { type: "array", items: taskItemSchema },
-                prepare_tomorrow: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: { action: { type: "string" } },
-                    required: ["action"],
-                  },
-                },
-                energy_sequence: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      time: { type: "string" },
-                      activity: { type: "string" },
-                      type: { type: "string", enum: ["deep", "shallow", "rest"] },
-                    },
-                    required: ["time", "activity", "type"],
-                  },
-                },
-                intention: { type: "string" },
-              },
-              required: ["must_do", "should_do", "skip", "prepare_tomorrow", "energy_sequence", "intention"],
-            },
           },
         }),
       }

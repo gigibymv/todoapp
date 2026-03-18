@@ -129,38 +129,6 @@ Go deep on what this person actually does, their company's current situation, an
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
           generationConfig: {
             response_mime_type: "application/json",
-            response_schema: {
-              type: "object",
-              properties: {
-                background_summary: { type: "string" },
-                person_role: { type: "string" },
-                talking_points: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      topic: { type: "string" },
-                      detail: { type: "string" },
-                    },
-                    required: ["topic", "detail"],
-                  },
-                },
-                linkedin_url: { type: "string", nullable: true },
-                key_questions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      question: { type: "string" },
-                      why: { type: "string" },
-                    },
-                    required: ["question", "why"],
-                  },
-                },
-                confidence_note: { type: "string", nullable: true },
-              },
-              required: ["background_summary", "person_role", "talking_points", "key_questions"],
-            },
           },
         }),
       }
@@ -175,7 +143,7 @@ Go deep on what this person actually does, their company's current situation, an
       }
       const errText = await aiResponse.text();
       console.error("Gemini API error:", aiResponse.status, errText);
-      throw new Error("Gemini API error");
+      throw new Error(`Gemini API error ${aiResponse.status}: ${errText.slice(0, 300)}`);
     }
 
     const aiData = await aiResponse.json();

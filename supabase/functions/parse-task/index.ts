@@ -41,22 +41,6 @@ CRITICAL RULES:
           contents: [{ role: "user", parts: [{ text }] }],
           generationConfig: {
             response_mime_type: "application/json",
-            response_schema: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                context: { type: "string", enum: ["work", "mba", "personal", "finance", "health", "legal"] },
-                priority: { type: "string", enum: ["p1", "p2", "p3", "p4"] },
-                energy_type: { type: "string", enum: ["deep_work", "shallow", "admin", "quick_win"] },
-                due_date: { type: "string", nullable: true },
-                estimated_duration_min: { type: "number", nullable: true },
-                recurrence_rule: { type: "string", nullable: true },
-                tags: { type: "array", items: { type: "string" } },
-                project_name: { type: "string", nullable: true },
-                location: { type: "string", nullable: true },
-              },
-              required: ["title", "context", "priority", "energy_type"],
-            },
           },
         }),
       }
