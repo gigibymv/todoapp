@@ -51,6 +51,38 @@ serve(async (req) => {
       }
     }
 
+    // LinkedIn lookup via native Gemini API with Google Search grounding
+    let resolvedLinkedinUrl = person_linkedin_url || null;
+    if (!resolvedLinkedinUrl) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+      if (GEMINI_API_KEY) {
+        try {
+          const searchQuery = person_company
+            ? `LinkedIn profile URL for ${person_name} at ${person_company} site:linkedin.com/in`
+            : `LinkedIn profile URL for ${person_name} site:linkedin.com/in`;
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: `${searchQuery}\n\nReturn ONLY the LinkedIn URL (https://www.linkedin.com/in/...) if you find a confident match. If you cannot find it with certainty, return exactly: NOT_FOUND` }] }],
+                tools: [{ google_search: {} }],
+              }),
+            }
+          );
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            const text = geminiData.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") || "";
+            const match = text.match(/https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?/i);
+            if (match) resolvedLinkedinUrl = match[0];
+          }
+        } catch (e) {
+          console.error("LinkedIn lookup error:", e);
+        }
+      }
+    }
+
     // Build list of user's own names to exclude from results
     const userNames = (user_display_name || "").split(/\s+/).filter((n: string) => n.length > 1);
     const excludeClause = userNames.length > 0
@@ -82,7 +114,7 @@ TALKING POINT QUALITY BAR:
     const userPrompt = `Prepare a deep-research coffee chat brief for a meeting with:
 - Name: ${person_name}
 ${person_company ? `- Company: ${person_company}` : ""}
-${person_linkedin_url ? `- LinkedIn: ${person_linkedin_url}` : ""}
+${resolvedLinkedinUrl ? `- LinkedIn: ${resolvedLinkedinUrl}` : ""}
 ${eventSummary ? `- Context: ${eventSummary}` : ""}
 
 Go deep on what this person actually does, their company's current situation, and what would make for genuinely interesting conversation. Focus ONLY on ${person_name}.`;
@@ -199,7 +231,7 @@ Go deep on what this person actually does, their company's current situation, an
       return null;
     };
 
-    const validatedLinkedinUrl = validateLinkedInUrl(brief.linkedin_url) || validateLinkedInUrl(person_linkedin_url);
+    const validatedLinkedinUrl = validateLinkedInUrl(brief.linkedin_url) || validateLinkedInUrl(resolvedLinkedinUrl) || validateLinkedInUrl(person_linkedin_url);
 
     const briefPayload = {
       user_id: user.id,
