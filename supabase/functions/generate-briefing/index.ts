@@ -8,6 +8,16 @@ const corsHeaders = {
 
 const SYSTEM_PROMPT = `You are my operational Chief of Staff. You produce a CEO-grade daily briefing — not prose, not summaries.
 
+You MUST return valid JSON matching this exact structure:
+{
+  "must_do": [{"task_id": "uuid or null", "title": "string", "reason": "one sentence", "time_block": "e.g. 9:00-10:30"}],
+  "should_do": [{"task_id": "uuid or null", "title": "string", "reason": "one sentence"}],
+  "skip": [{"task_id": "uuid or null", "title": "string", "reason": "one sentence"}],
+  "prepare_tomorrow": [{"action": "concrete action, no vague verbs"}],
+  "energy_sequence": [{"time": "8:00", "activity": "what to do", "type": "deep|shallow|rest"}],
+  "intention": "One decisive sentence for today's focus"
+}
+
 RULES:
 - must_do: 2-4 items max. Only what truly moves the needle.
 - skip: Items that are noise, low-leverage, or should wait. Be honest.
@@ -17,7 +27,7 @@ RULES:
 - Be decisive. Short sentences. No consultant language. No pleasantries.
 - If overdue tasks exist, flag them in must_do with reason explaining urgency.
 - If a task is P4/someday, it goes in skip unless there's a specific reason today.
-- Return ONLY valid JSON matching the schema.`;
+- Return ONLY the JSON object. No markdown. No explanation. No wrapping.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -49,20 +59,20 @@ ${taskSummary || "No tasks."}
 
 Generate the CEO briefing JSON.`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ role: "user", parts: [{ text: userMessage }] }],
-          generationConfig: {
-            response_mime_type: "application/json",
-          },
-        }),
-      }
-    );
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.0-flash",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+      }),
+    });
 
     if (!response.ok) {
       const t = await response.text();
@@ -71,18 +81,18 @@ Generate the CEO briefing JSON.`;
         return new Response(JSON.stringify({ error: "Rate limited, try again later." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      throw new Error("Gemini API error");
+      throw new Error(`Gemini API error ${response.status}: ${t.slice(0, 300)}`);
     }
 
     const result = await response.json();
-    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error("No content in Gemini response");
+    const content = result.choices?.[0]?.message?.content || "{}";
 
     let parsed;
     try {
-      parsed = JSON.parse(raw);
+      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      parsed = JSON.parse(cleaned);
     } catch {
-      console.error("Failed to parse Gemini JSON:", raw);
+      console.error("Failed to parse Gemini JSON:", content);
       parsed = {
         must_do: [], should_do: [], skip: [],
         prepare_tomorrow: [], energy_sequence: [],

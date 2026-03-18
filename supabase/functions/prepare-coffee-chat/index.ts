@@ -11,8 +11,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const GEMINI_API_KEY_MAIN = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY_MAIN) throw new Error("GEMINI_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const authHeader = req.headers.get("Authorization");
     const supabase = createClient(
@@ -51,35 +51,32 @@ serve(async (req) => {
       }
     }
 
-    // LinkedIn lookup via native Gemini API with Google Search grounding
+    // LinkedIn lookup via native Gemini API with Google Search grounding (v1beta, best-effort)
     let resolvedLinkedinUrl = person_linkedin_url || null;
     if (!resolvedLinkedinUrl) {
-      if (GEMINI_API_KEY_MAIN) {
-        const GEMINI_API_KEY = GEMINI_API_KEY_MAIN;
-        try {
-          const searchQuery = person_company
-            ? `LinkedIn profile URL for ${person_name} at ${person_company} site:linkedin.com/in`
-            : `LinkedIn profile URL for ${person_name} site:linkedin.com/in`;
-          const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: `${searchQuery}\n\nReturn ONLY the LinkedIn URL (https://www.linkedin.com/in/...) if you find a confident match. If you cannot find it with certainty, return exactly: NOT_FOUND` }] }],
-                tools: [{ google_search: {} }],
-              }),
-            }
-          );
-          if (geminiRes.ok) {
-            const geminiData = await geminiRes.json();
-            const text = geminiData.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") || "";
-            const match = text.match(/https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?/i);
-            if (match) resolvedLinkedinUrl = match[0];
+      try {
+        const searchQuery = person_company
+          ? `LinkedIn profile URL for ${person_name} at ${person_company} site:linkedin.com/in`
+          : `LinkedIn profile URL for ${person_name} site:linkedin.com/in`;
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: `${searchQuery}\n\nReturn ONLY the LinkedIn URL (https://www.linkedin.com/in/...) if you find a confident match. If you cannot find it with certainty, return exactly: NOT_FOUND` }] }],
+              tools: [{ google_search: {} }],
+            }),
           }
-        } catch (e) {
-          console.error("LinkedIn lookup error:", e);
+        );
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const text = geminiData.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") || "";
+          const match = text.match(/https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?/i);
+          if (match) resolvedLinkedinUrl = match[0];
         }
+      } catch (e) {
+        console.error("LinkedIn lookup error:", e);
       }
     }
 
@@ -119,20 +116,76 @@ ${eventSummary ? `- Context: ${eventSummary}` : ""}
 
 Go deep on what this person actually does, their company's current situation, and what would make for genuinely interesting conversation. Focus ONLY on ${person_name}.`;
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY_MAIN}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            response_mime_type: "application/json",
+    const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.0-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "coffee_chat_brief",
+              description: "Return a structured coffee chat briefing with deep research",
+              parameters: {
+                type: "object",
+                properties: {
+                  background_summary: {
+                    type: "string",
+                    description: "4-5 sentence rich professional background: role, what they/their company actually do, career arc, current focus areas",
+                  },
+                  person_role: {
+                    type: "string",
+                    description: "Their current role/title with company, e.g. 'VP of Engineering at Acme Corp'",
+                  },
+                  talking_points: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        topic: { type: "string", description: "Short topic label (2-5 words)" },
+                        detail: { type: "string", description: "A specific conversation opener or question you can say out loud" },
+                      },
+                      required: ["topic", "detail"],
+                    },
+                    description: "Exactly 5 talking points with specific, actionable conversation openers",
+                  },
+                  linkedin_url: {
+                    type: "string",
+                    description: "LinkedIn profile URL ONLY if provided or highly confident. Must start with https://www.linkedin.com/in/. Empty string if unsure.",
+                  },
+                  key_questions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        question: { type: "string", description: "A thoughtful question to ask them" },
+                        why: { type: "string", description: "One sentence on why this question is worth asking" },
+                      },
+                      required: ["question", "why"],
+                    },
+                    description: "Exactly 3 high-value questions to ask, each with a reason why",
+                  },
+                  confidence_note: {
+                    type: "string",
+                    description: "Brief note on confidence level in accuracy",
+                  },
+                },
+                required: ["background_summary", "person_role", "talking_points", "key_questions"],
+              },
+            },
           },
-        }),
-      }
-    );
+        ],
+        tool_choice: { type: "function", function: { name: "coffee_chat_brief" } },
+      }),
+    });
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
@@ -147,12 +200,12 @@ Go deep on what this person actually does, their company's current situation, an
     }
 
     const aiData = await aiResponse.json();
-    const raw = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error("No content in Gemini response");
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("No tool call in AI response");
 
-    const brief = JSON.parse(raw);
+    const brief = JSON.parse(toolCall.function.arguments);
 
-    // Validate LinkedIn URL - must be a proper linkedin.com/in/ URL
+    // Validate LinkedIn URL
     const validateLinkedInUrl = (url: string | undefined | null): string | null => {
       if (!url || url.trim() === '') return null;
       const cleaned = url.trim();
@@ -179,7 +232,6 @@ Go deep on what this person actually does, their company's current situation, an
 
     let saved: any = null;
     if (existing_brief_id) {
-      // Regenerating — update in place
       const { data, error: updateError } = await supabase
         .from("meeting_briefs")
         .update(briefPayload)
@@ -190,7 +242,6 @@ Go deep on what this person actually does, their company's current situation, an
       if (updateError) console.error("Update error:", updateError);
       saved = data;
     } else {
-      // New brief — insert
       const { data, error: insertError } = await supabase
         .from("meeting_briefs")
         .insert(briefPayload)

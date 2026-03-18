@@ -29,22 +29,48 @@ CRITICAL RULES:
 - NEVER put date/time information in the title. The title should be the clean action only.
 - If the user mentions a location or place (e.g. "at Starbucks", "in the office", "at 123 Main St", "chez le dentiste"), extract it into the "location" field and remove it from the title.
 - Available contexts: work, mba, personal, finance, health, legal.
-- Return ONLY valid JSON matching the schema, no markdown, no explanation.`;
+- Return ONLY the function call.`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text }] }],
-          generationConfig: {
-            response_mime_type: "application/json",
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.0-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "parse_task",
+              description: "Parse a natural language task into structured metadata",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string", description: "Clean task title" },
+                  context: { type: "string", enum: ["work", "mba", "personal", "finance", "health", "legal"] },
+                  priority: { type: "string", enum: ["p1", "p2", "p3", "p4"] },
+                  energy_type: { type: "string", enum: ["deep_work", "shallow", "admin", "quick_win"] },
+                  due_date: { type: "string", description: "ISO 8601 datetime or null" },
+                  estimated_duration_min: { type: "number", description: "Estimated minutes" },
+                  recurrence_rule: { type: "string", description: "RRULE string or null" },
+                  tags: { type: "array", items: { type: "string" } },
+                  project_name: { type: "string", description: "Suggested project name or null" },
+                  location: { type: "string", description: "Location or place mentioned by the user, or null" },
+                },
+                required: ["title", "context", "priority", "energy_type"],
+              },
+            },
           },
-        }),
-      }
-    );
+        ],
+        tool_choice: { type: "function", function: { name: "parse_task" } },
+      }),
+    });
 
     if (!response.ok) {
       const t = await response.text();
@@ -54,14 +80,14 @@ CRITICAL RULES:
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error("Gemini API error");
+      throw new Error(`Gemini API error ${response.status}: ${t.slice(0, 300)}`);
     }
 
     const data = await response.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error("No content in Gemini response");
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("No tool call in response");
 
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(toolCall.function.arguments);
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
