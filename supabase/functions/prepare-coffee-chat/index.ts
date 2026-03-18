@@ -120,7 +120,7 @@ ${eventSummary ? `- Context: ${eventSummary}` : ""}
 Go deep on what this person actually does, their company's current situation, and what would make for genuinely interesting conversation. Focus ONLY on ${person_name}.`;
 
     const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY_MAIN}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY_MAIN}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
