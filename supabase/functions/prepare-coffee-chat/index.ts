@@ -127,7 +127,6 @@ Go deep on what this person actually does, their company's current situation, an
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          tools: [{ google_search: {} }],
           generationConfig: {
             response_mime_type: "application/json",
             response_schema: {
