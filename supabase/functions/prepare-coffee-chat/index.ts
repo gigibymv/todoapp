@@ -61,7 +61,7 @@ serve(async (req) => {
             ? `LinkedIn profile URL for ${person_name} at ${person_company} site:linkedin.com/in`
             : `LinkedIn profile URL for ${person_name} site:linkedin.com/in`;
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -120,7 +120,7 @@ ${eventSummary ? `- Context: ${eventSummary}` : ""}
 Go deep on what this person actually does, their company's current situation, and what would make for genuinely interesting conversation. Focus ONLY on ${person_name}.`;
 
     const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY_MAIN}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY_MAIN}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
