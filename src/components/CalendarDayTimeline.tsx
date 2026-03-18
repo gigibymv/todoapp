@@ -234,9 +234,6 @@ export function CalendarDayTimeline({
         ref={containerRef}
         className="relative select-none"
         style={{ height: totalHeight }}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
       >
         {/* Hour lines */}
         {hours.map(hMin => (
@@ -291,6 +288,9 @@ export function CalendarDayTimeline({
               )}
               style={{ top, height, minHeight: MIN_BLOCK_H }}
               onPointerDown={(e) => isTask ? handlePointerDown(e, block) : undefined}
+              onPointerMove={(e) => isTask ? handlePointerMove(e) : undefined}
+              onPointerUp={() => isTask ? handlePointerUp() : undefined}
+              onPointerCancel={() => isTask ? handlePointerUp() : undefined}
               onClick={() => {
                 if (hasDragged.current) return;
                 if (isEvent) onEventClick?.(block.raw as CalendarEvent);
