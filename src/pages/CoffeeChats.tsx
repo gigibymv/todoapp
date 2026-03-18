@@ -166,10 +166,15 @@ export default function CoffeeChats() {
 
   const handleManualSubmit = () => {
     if (!manualName.trim()) return;
+    const existing = briefs.find(b =>
+      !b.calendar_event_id &&
+      b.person_name?.toLowerCase() === manualName.trim().toLowerCase()
+    );
     prepareBrief({
       person_name: manualName.trim(),
       person_company: manualCompany.trim() || undefined,
       person_linkedin_url: manualLinkedin.trim() || undefined,
+      existing_brief_id: existing?.id,
     });
     setManualOpen(false);
     setManualName('');
