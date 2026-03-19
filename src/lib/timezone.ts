@@ -23,7 +23,7 @@ export function getDayBoundsUTC(tz: string, dateStr?: string): { start: string; 
 }
 
 /** Convert a date+time in a given timezone to a UTC Date */
-function zonedToUTC(dateStr: string, timeStr: string, tz: string): Date {
+export function zonedToUTC(dateStr: string, timeStr: string, tz: string): Date {
   // Create a formatter that outputs in the target timezone
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,

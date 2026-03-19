@@ -54,7 +54,7 @@ export default function Today() {
       .in('status', ['todo', 'in_progress', 'done'])
       .order('priority', { ascending: true })
       .order('due_date', { ascending: true, nullsFirst: false })
-      .limit(100);
+      .limit(500);
     setTasks((data as Task[]) || []);
     setLoading(false);
   }, [user]);
@@ -164,7 +164,7 @@ export default function Today() {
     };
     loadBrief();
     return () => abortRef.current?.abort();
-  }, [user]);
+  }, [user, tz, dailyReset, fetchTasks, fetchEvents]);
 
   const handleArchive = async (taskId: string) => {
     await supabase.from('tasks').update({ status: 'archived' }).eq('id', taskId);

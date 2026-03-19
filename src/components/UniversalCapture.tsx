@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import type { AITaskParse, TaskContext, TaskPriority, EnergyType } from '@/lib/types';
 import { CONTEXT_LABELS, PRIORITY_LABELS, ENERGY_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { getTodayInTz, zonedToUTC } from '@/lib/timezone';
 
 interface Project { id: string; name: string; icon: string | null; color: string | null; }
 interface Board { id: string; name: string; project_id: string; }
@@ -155,16 +156,16 @@ function CaptureForm({ onSaved, autoFocus = true, inline = true }: CaptureFormPr
     const taskData = parsed || { title: text.trim(), context: 'personal' as TaskContext, priority: 'p3' as TaskPriority, energy_type: 'shallow' as EnergyType };
     
     // Compute dates
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+    const today = getTodayInTz(tz);
     const effectiveDate = scheduledDate || today;
-    
-    // If user picked a scheduled time, build a proper due_date with that time instead of 11:59 PM
+
+    // If user picked a scheduled time, build a proper due_date in the user's timezone
     let finalDueDate = taskData.due_date || null;
     if (scheduledTime) {
-      finalDueDate = new Date(`${effectiveDate}T${scheduledTime}:00`).toISOString();
+      finalDueDate = zonedToUTC(effectiveDate, `${scheduledTime}:00`, tz).toISOString();
     } else if (scheduledDate) {
-      // Date picked but no time — set due_date to end of that day
-      finalDueDate = new Date(`${scheduledDate}T23:59:59`).toISOString();
+      // Date picked but no time — set due_date to end of that day in user's timezone
+      finalDueDate = zonedToUTC(scheduledDate, '23:59:59', tz).toISOString();
     }
     
     try {
