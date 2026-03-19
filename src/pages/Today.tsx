@@ -504,7 +504,7 @@ export default function Today() {
                       <span className="text-[10px] font-mono text-muted-foreground/50 w-14 shrink-0">{e.time}</span>
                       <span className={cn(
                         'w-1.5 h-1.5 rounded-full shrink-0',
-                        e.type === 'deep' ? 'bg-gigi-work' : e.type === 'rest' ? 'bg-gigi-health' : 'bg-muted-foreground/40'
+                        e.type === 'deep' ? 'bg-gigi-work' : e.type === 'rest' ? 'bg-gigi-personal' : 'bg-muted-foreground/40'
                       )} />
                       <p className="text-[12px] text-foreground/70">{e.activity}</p>
                     </div>
@@ -554,7 +554,7 @@ export default function Today() {
                     <span className="text-[10px] font-mono text-muted-foreground/50 w-14 shrink-0">{e.time}</span>
                     <span className={cn(
                       'w-1.5 h-1.5 rounded-full shrink-0',
-                      e.type === 'deep' ? 'bg-gigi-work' : e.type === 'rest' ? 'bg-gigi-health' : 'bg-muted-foreground/40'
+                      e.type === 'deep' ? 'bg-gigi-work' : e.type === 'rest' ? 'bg-gigi-personal' : 'bg-muted-foreground/40'
                     )} />
                     <p className="text-[12px] text-foreground/70">{e.activity}</p>
                   </div>

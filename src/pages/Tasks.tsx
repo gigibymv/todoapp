@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Trash2, Archive, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import type { Task, TaskContext, TaskPriority } from '@/lib/types';
 import { CONTEXT_LABELS, PRIORITY_LABELS, CONTEXTS } from '@/lib/types';
+import { labelName } from '@/lib/context-labels';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -266,7 +267,7 @@ export default function Tasks() {
           ))}
         </div>
         <div className="flex flex-wrap gap-1">
-          {CONTEXTS.map((c) => (
+          {[...CONTEXTS, ...(profile?.custom_labels ?? []).map(l => l.id)].map((c) => (
             <button
               key={c}
               onClick={() => setContextFilter(contextFilter === c ? null : c)}
@@ -275,7 +276,7 @@ export default function Tasks() {
                 contextFilter === c ? 'bg-foreground text-background font-medium' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {CONTEXT_LABELS[c]}
+              {labelName(c, profile?.custom_labels ?? [])}
             </button>
           ))}
           <span className="w-px h-4 bg-border self-center mx-1" />

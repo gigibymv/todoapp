@@ -1,8 +1,12 @@
 export type TaskPriority = 'p1' | 'p2' | 'p3' | 'p4';
-export type TaskContext = 'work' | 'mba' | 'personal' | 'finance' | 'health' | 'legal';
+export type TaskContext = string;
 
-// Ordered list of contexts shown in UI (subset visible to users)
-export const CONTEXTS: TaskContext[] = ['work', 'mba', 'personal', 'finance', 'health', 'legal'];
+// Default built-in contexts (always available)
+export const DEFAULT_CONTEXTS = ['work', 'school', 'admin', 'personal'] as const;
+export type DefaultContext = typeof DEFAULT_CONTEXTS[number];
+
+// Ordered list of contexts shown in UI (defaults only; custom labels appended at runtime)
+export const CONTEXTS: string[] = ['work', 'school', 'admin', 'personal'];
 export type EnergyType = 'deep_work' | 'shallow' | 'admin' | 'quick_win';
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'archived';
 export type ProjectStatus = 'active' | 'completed' | 'archived';
@@ -66,13 +70,11 @@ export const PRIORITY_LABELS: Record<TaskPriority, string> = {
   p4: 'Low',
 };
 
-export const CONTEXT_LABELS: Record<TaskContext, string> = {
+export const CONTEXT_LABELS: Record<string, string> = {
   work: 'Work',
-  mba: 'MBA',
+  school: 'School',
+  admin: 'Admin',
   personal: 'Personal',
-  finance: 'Finance',
-  health: 'Health',
-  legal: 'Legal',
 };
 
 export const ENERGY_LABELS: Record<EnergyType, string> = {

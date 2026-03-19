@@ -7,6 +7,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
 import type { AITaskParse, TaskContext, TaskPriority, EnergyType } from '@/lib/types';
 import { CONTEXT_LABELS, PRIORITY_LABELS, ENERGY_LABELS } from '@/lib/types';
+import { labelName } from '@/lib/context-labels';
 import { cn } from '@/lib/utils';
 import { getTodayInTz, zonedToUTC } from '@/lib/timezone';
 
@@ -482,7 +483,7 @@ function CaptureForm({ onSaved, autoFocus = true, inline = true }: CaptureFormPr
             <>
               <span className="w-px h-5 bg-border mx-0.5" />
               <span className={cn('px-3.5 py-2 rounded-xl font-medium min-h-[44px] inline-flex items-center', contextColor(parsed.context))}>
-                {CONTEXT_LABELS[parsed.context]}
+                {labelName(parsed.context, profile?.custom_labels ?? [])}
               </span>
               {parsed.priority === 'p1' && (
                 <span className="px-3.5 py-2 rounded-xl font-medium bg-accent/10 text-accent inline-flex items-center gap-1.5 min-h-[44px]">
@@ -547,14 +548,12 @@ export function CaptureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   );
 }
 
-function contextColor(ctx: TaskContext) {
-  const map: Record<TaskContext, string> = {
+function contextColor(ctx: string) {
+  const map: Record<string, string> = {
     work: 'bg-gigi-work/10 text-gigi-work',
-    mba: 'bg-gigi-mba/10 text-gigi-mba',
+    school: 'bg-gigi-school/10 text-gigi-school',
     personal: 'bg-gigi-personal/10 text-gigi-personal',
-    finance: 'bg-gigi-finance/10 text-gigi-finance',
-    health: 'bg-gigi-health/10 text-gigi-health',
-    legal: 'bg-secondary text-muted-foreground',
+    admin: 'bg-gigi-admin/10 text-gigi-admin',
   };
   return map[ctx] || 'bg-secondary text-muted-foreground';
 }

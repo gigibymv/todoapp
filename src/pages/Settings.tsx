@@ -11,6 +11,8 @@ import { ArrowLeft, Trash2, RefreshCw, Calendar, Plus, Link, ChevronsUpDown, Che
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import type { CustomLabel } from '@/lib/context-labels';
+import { nextPaletteColor } from '@/lib/context-labels';
 
 
 interface Profile {
@@ -37,6 +39,8 @@ export default function Settings() {
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [saving, setSaving] = useState(false);
   const [calendars, setCalendars] = useState<CalendarLink[]>([]);
+  const [customLabels, setCustomLabels] = useState<CustomLabel[]>([]);
+  const [newLabelName, setNewLabelName] = useState('');
   const [showAddCal, setShowAddCal] = useState(false);
   const [newCalName, setNewCalName] = useState('');
   const [newCalUrl, setNewCalUrl] = useState('');
@@ -50,7 +54,10 @@ export default function Settings() {
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('*').eq('user_id', user.id).single().then(({ data }) => {
-      if (data) setProfile(data as any);
+      if (data) {
+        setProfile(data as any);
+        setCustomLabels((data as any).custom_labels || []);
+      }
     });
     supabase.from('categorization_patterns').select('*').eq('user_id', user.id).order('usage_count', { ascending: false }).then(({ data }) => {
       setPatterns((data as Pattern[]) || []);
@@ -79,6 +86,28 @@ export default function Settings() {
     if (error) toast.error(error.message);
     else setPatterns(patterns.filter((p) => p.id !== id));
   };
+
+  const saveLabels = async (labels: CustomLabel[]) => {
+    if (!user) return;
+    setCustomLabels(labels);
+    const { error } = await supabase.from('profiles').update({ custom_labels: labels as any }).eq('user_id', user.id);
+    if (error) toast.error(error.message);
+    else refetchProfile();
+  };
+
+  const addLabel = async () => {
+    const name = newLabelName.trim();
+    if (!name) return;
+    const newLabel: CustomLabel = {
+      id: crypto.randomUUID(),
+      name,
+      color: nextPaletteColor(customLabels),
+    };
+    await saveLabels([...customLabels, newLabel]);
+    setNewLabelName('');
+  };
+
+  const deleteLabel = (id: string) => saveLabels(customLabels.filter(l => l.id !== id));
 
   const normalizeCalUrl = (url: string) => {
     let u = url.trim();
@@ -295,6 +324,33 @@ export default function Settings() {
             ))}
           </div>
         )}
+      </Section>
+
+      {/* Labels */}
+      <Section title="Labels">
+        <div className="space-y-1.5 mb-3">
+          {customLabels.map(l => (
+            <div key={l.id} className="flex items-center gap-3 py-2 px-3 rounded-md bg-secondary">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: `hsl(${l.color})` }} />
+              <p className="flex-1 text-[13px] font-medium">{l.name}</p>
+              <button onClick={() => deleteLabel(l.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={newLabelName}
+            onChange={e => setNewLabelName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addLabel()}
+            placeholder="New label name…"
+            className="h-9 bg-secondary border-0 text-[13px]"
+          />
+          <Button size="sm" className="h-9 shrink-0" onClick={addLabel} disabled={!newLabelName.trim()}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add
+          </Button>
+        </div>
       </Section>
 
       <div className="border-t border-border pt-6 mt-2">

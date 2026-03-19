@@ -28,7 +28,7 @@ CRITICAL RULES:
 - All dates/times should be relative to the user's timezone (${tz}), but output as ISO 8601 with proper UTC offset.
 - NEVER put date/time information in the title. The title should be the clean action only.
 - If the user mentions a location or place (e.g. "at Starbucks", "in the office", "at 123 Main St", "chez le dentiste"), extract it into the "location" field and remove it from the title.
-- Available contexts: work, mba, personal, finance, health, legal.
+- Available contexts: work, school, admin, personal.
 - Return ONLY the function call.`;
 
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
@@ -53,7 +53,7 @@ CRITICAL RULES:
                 type: "object",
                 properties: {
                   title: { type: "string", description: "Clean task title" },
-                  context: { type: "string", enum: ["work", "mba", "personal", "finance", "health", "legal"] },
+                  context: { type: "string", enum: ["work", "school", "admin", "personal"] },
                   priority: { type: "string", enum: ["p1", "p2", "p3", "p4"] },
                   energy_type: { type: "string", enum: ["deep_work", "shallow", "admin", "quick_win"] },
                   due_date: { type: "string", description: "ISO 8601 datetime or null" },

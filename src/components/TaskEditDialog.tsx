@@ -40,6 +40,8 @@ const RECURRENCE_OPTIONS = [
 
 export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: TaskEditDialogProps) {
   const { user } = useAuth();
+  const { profile } = useProfile();
+  const customLabels = profile?.custom_labels ?? [];
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [context, setContext] = useState<TaskContext>('personal');
@@ -250,6 +252,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved, onDelete }: 
                 <SelectTrigger className="mt-1.5 h-10 bg-secondary border-0 text-[13px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CONTEXTS.map((c) => <SelectItem key={c} value={c}>{CONTEXT_LABELS[c]}</SelectItem>)}
+                  {customLabels.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

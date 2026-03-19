@@ -148,7 +148,7 @@ export type Database = {
       categorization_patterns: {
         Row: {
           confidence: number | null
-          context: Database["public"]["Enums"]["task_context"] | null
+          context: string | null
           created_at: string
           energy_type: Database["public"]["Enums"]["energy_type"] | null
           id: string
@@ -159,7 +159,7 @@ export type Database = {
         }
         Insert: {
           confidence?: number | null
-          context?: Database["public"]["Enums"]["task_context"] | null
+          context?: string | null
           created_at?: string
           energy_type?: Database["public"]["Enums"]["energy_type"] | null
           id?: string
@@ -170,7 +170,7 @@ export type Database = {
         }
         Update: {
           confidence?: number | null
-          context?: Database["public"]["Enums"]["task_context"] | null
+          context?: string | null
           created_at?: string
           energy_type?: Database["public"]["Enums"]["energy_type"] | null
           id?: string
@@ -271,6 +271,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          custom_labels: Json
           deep_work_preference: string | null
           display_name: string | null
           id: string
@@ -286,6 +287,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          custom_labels?: Json
           deep_work_preference?: string | null
           display_name?: string | null
           id?: string
@@ -301,6 +303,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          custom_labels?: Json
           deep_work_preference?: string | null
           display_name?: string | null
           id?: string
@@ -489,7 +492,7 @@ export type Database = {
           brief_action: string | null
           category_id: string | null
           completed_at: string | null
-          context: Database["public"]["Enums"]["task_context"]
+          context: string
           created_at: string
           description: string | null
           due_date: string | null
@@ -515,7 +518,7 @@ export type Database = {
           brief_action?: string | null
           category_id?: string | null
           completed_at?: string | null
-          context?: Database["public"]["Enums"]["task_context"]
+          context?: string
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -541,7 +544,7 @@ export type Database = {
           brief_action?: string | null
           category_id?: string | null
           completed_at?: string | null
-          context?: Database["public"]["Enums"]["task_context"]
+          context?: string
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -628,7 +631,7 @@ export type Database = {
     Enums: {
       energy_type: "deep_work" | "shallow" | "admin" | "quick_win"
       project_status: "active" | "completed" | "archived"
-      task_context: "work" | "mba" | "personal" | "finance" | "health" | "legal"
+      task_context: string
       task_priority: "p1" | "p2" | "p3" | "p4"
       task_status: "todo" | "in_progress" | "done" | "archived"
     }
@@ -760,7 +763,7 @@ export const Constants = {
     Enums: {
       energy_type: ["deep_work", "shallow", "admin", "quick_win"],
       project_status: ["active", "completed", "archived"],
-      task_context: ["work", "mba", "personal", "finance", "health", "legal"],
+      task_context: ["work", "school", "admin", "personal"],
       task_priority: ["p1", "p2", "p3", "p4"],
       task_status: ["todo", "in_progress", "done", "archived"],
     },

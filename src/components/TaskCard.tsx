@@ -2,12 +2,13 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import type { Task, TaskContext } from '@/lib/types';
+import type { Task } from '@/lib/types';
 import { Archive, Clock, Pencil, X, MapPin, Check, CalendarDays, RotateCcw } from 'lucide-react';
 import { RescheduleMenu } from '@/components/RescheduleMenu';
 import { toast } from 'sonner';
 import { useProfile } from '@/hooks/useProfile';
 import { motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
+import { contextDotClass, customLabelStyle, type CustomLabel } from '@/lib/context-labels';
 
 interface TaskCardProps {
   task: Task;
@@ -131,11 +132,11 @@ export function TaskCard({ task, compact, boardName, onUpdate, onDelete, onEdit,
     <div ref={containerRef} className="relative overflow-hidden rounded-lg">
       {/* Swipe right background — green complete */}
       <motion.div
-        className="absolute inset-0 bg-gigi-health/15 flex items-center pl-4 rounded-lg"
+        className="absolute inset-0 bg-gigi-personal/15 flex items-center pl-4 rounded-lg"
         style={{ opacity: rightBg }}
       >
-        <Check className="h-5 w-5 text-gigi-health" />
-        <span className="text-[11px] font-medium text-gigi-health ml-1.5">Done</span>
+        <Check className="h-5 w-5 text-gigi-personal" />
+        <span className="text-[11px] font-medium text-gigi-personal ml-1.5">Done</span>
       </motion.div>
 
       {/* Swipe left background — actions */}
@@ -168,7 +169,7 @@ export function TaskCard({ task, compact, boardName, onUpdate, onDelete, onEdit,
         />
         <div className="flex-1 min-w-0" onClick={() => onEdit?.(task)}>
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', contextDot(task.context))} />
+            <ContextDot ctx={task.context} customLabels={profile?.custom_labels ?? []} />
             <p className={cn('text-[13px] truncate', (task.status === 'done' || isArchived) && 'line-through text-muted-foreground')}>
               {task.title}
             </p>
@@ -233,14 +234,14 @@ export function TaskCard({ task, compact, boardName, onUpdate, onDelete, onEdit,
   );
 }
 
-function contextDot(ctx: TaskContext) {
-  const map: Record<TaskContext, string> = {
-    work: 'bg-gigi-work',
-    mba: 'bg-gigi-mba',
-    personal: 'bg-gigi-personal',
-    finance: 'bg-gigi-finance',
-    health: 'bg-gigi-health',
-    legal: 'bg-muted-foreground',
-  };
-  return map[ctx] || 'bg-muted-foreground';
+function ContextDot({ ctx, customLabels }: { ctx: string; customLabels: CustomLabel[] }) {
+  const cls = contextDotClass(ctx);
+  if (cls) return <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', cls)} />;
+  const label = customLabels.find(l => l.id === ctx);
+  return (
+    <span
+      className="w-1.5 h-1.5 rounded-full shrink-0"
+      style={label ? customLabelStyle(label.color) : undefined}
+    />
+  );
 }

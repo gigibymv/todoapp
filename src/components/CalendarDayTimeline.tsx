@@ -61,10 +61,9 @@ function minsToLabel(mins: number): string {
 function contextStyles(ctx?: string) {
   const map: Record<string, { border: string; bg: string; hover: string }> = {
     work: { border: 'border-l-gigi-work', bg: 'bg-gigi-work/25', hover: 'hover:bg-gigi-work/32' },
-    mba: { border: 'border-l-gigi-mba', bg: 'bg-gigi-mba/25', hover: 'hover:bg-gigi-mba/32' },
+    school: { border: 'border-l-gigi-school', bg: 'bg-gigi-school/25', hover: 'hover:bg-gigi-school/32' },
     personal: { border: 'border-l-gigi-personal', bg: 'bg-gigi-personal/25', hover: 'hover:bg-gigi-personal/32' },
-    finance: { border: 'border-l-gigi-finance', bg: 'bg-gigi-finance/25', hover: 'hover:bg-gigi-finance/32' },
-    health: { border: 'border-l-gigi-health', bg: 'bg-gigi-health/25', hover: 'hover:bg-gigi-health/32' },
+    admin: { border: 'border-l-gigi-admin', bg: 'bg-gigi-admin/25', hover: 'hover:bg-gigi-admin/32' },
   };
   const fallback = { border: 'border-l-primary/30', bg: 'bg-primary/10', hover: 'hover:bg-primary/15' };
   return ctx ? map[ctx] || fallback : fallback;

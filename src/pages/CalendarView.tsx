@@ -130,11 +130,9 @@ export default function CalendarView() {
   const contextColor = (ctx: string) => {
     const map: Record<string, string> = {
       work: 'border-l-gigi-work bg-gigi-work/5',
-      mba: 'border-l-gigi-mba bg-gigi-mba/5',
+      school: 'border-l-gigi-school bg-gigi-school/5',
       personal: 'border-l-gigi-personal bg-gigi-personal/5',
-      finance: 'border-l-gigi-finance bg-gigi-finance/5',
-      health: 'border-l-gigi-health bg-gigi-health/5',
-      legal: 'border-l-muted-foreground bg-secondary',
+      admin: 'border-l-gigi-admin bg-gigi-admin/5',
     };
     return map[ctx] || 'border-l-foreground/20 bg-secondary';
   };

@@ -33,14 +33,14 @@ function getTimeInTz(isoStr: string, tz: string): number {
 }
 
 function contextBorder(ctx?: string) {
+  if (!ctx) return 'border-l-muted-foreground/30';
   const map: Record<string, string> = {
     work: 'border-l-gigi-work',
-    mba: 'border-l-gigi-mba',
+    school: 'border-l-gigi-school',
     personal: 'border-l-gigi-personal',
-    finance: 'border-l-gigi-finance',
-    health: 'border-l-gigi-health',
+    admin: 'border-l-gigi-admin',
   };
-  return ctx ? map[ctx] || 'border-l-muted-foreground/30' : 'border-l-muted-foreground/30';
+  return map[ctx] || 'border-l-muted-foreground/30';
 }
 
 interface InteractiveDayTimelineProps {

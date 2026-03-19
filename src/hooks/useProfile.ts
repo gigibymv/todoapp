@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import React from 'react';
+import type { CustomLabel } from '@/lib/context-labels';
 
 export interface Profile {
   display_name: string | null;
@@ -12,6 +13,7 @@ export interface Profile {
   work_hours_start: string;
   work_hours_end: string;
   notification_enabled: boolean;
+  custom_labels: CustomLabel[];
 }
 
 interface ProfileContextValue {
@@ -31,7 +33,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!user) { setLoading(false); return; }
     supabase
       .from('profiles')
-      .select('display_name, timezone, onboarding_completed, deep_work_preference, pomodoro_duration, work_hours_start, work_hours_end, notification_enabled')
+      .select('display_name, timezone, onboarding_completed, deep_work_preference, pomodoro_duration, work_hours_start, work_hours_end, notification_enabled, custom_labels')
       .eq('user_id', user.id)
       .single()
       .then(({ data }) => {
