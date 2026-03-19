@@ -2,7 +2,7 @@ export type TaskPriority = 'p1' | 'p2' | 'p3' | 'p4';
 export type TaskContext = 'work' | 'mba' | 'personal' | 'finance' | 'health' | 'legal';
 
 // Ordered list of contexts shown in UI (subset visible to users)
-export const CONTEXTS: TaskContext[] = ['work', 'mba', 'personal'];
+export const CONTEXTS: TaskContext[] = ['work', 'mba', 'personal', 'finance', 'health', 'legal'];
 export type EnergyType = 'deep_work' | 'shallow' | 'admin' | 'quick_win';
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'archived';
 export type ProjectStatus = 'active' | 'completed' | 'archived';

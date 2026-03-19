@@ -34,7 +34,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { tasks, display_name, timezone } = await req.json();
+    const { tasks, display_name, timezone, work_hours_start, work_hours_end, deep_work_preference } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
@@ -53,6 +53,7 @@ serve(async (req) => {
 
     const userMessage = `Today is ${dayOfWeek}, ${today}. Current time: ${timeNow}.
 ${display_name ? `Name: ${display_name}` : ""}
+Work hours: ${work_hours_start || "09:00"} – ${work_hours_end || "18:00"}. Deep work preference: ${deep_work_preference || "morning"}.
 
 Active tasks:
 ${taskSummary || "No tasks."}

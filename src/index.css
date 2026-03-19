@@ -49,6 +49,7 @@
     --gigi-personal: 152 69% 31%;
     --gigi-finance: 38 90% 48%;
     --gigi-health: 142 64% 40%;
+    --gigi-legal: 199 80% 44%;
     --gigi-surface: 0 0% 7%;
     --gigi-surface-raised: 0 0% 12%;
     --gigi-glow: 24 85% 55%;
@@ -123,4 +124,12 @@
 /* Selection — orange */
 ::selection {
   background: hsl(var(--accent) / 0.2);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
 }

@@ -372,7 +372,7 @@ export default function Projects() {
 function contextDot(ctx: string) {
   const map: Record<string, string> = {
     work: 'bg-gigi-work', mba: 'bg-gigi-mba', personal: 'bg-gigi-personal',
-    finance: 'bg-gigi-finance', health: 'bg-gigi-health', legal: 'bg-muted-foreground',
+    finance: 'bg-gigi-finance', health: 'bg-gigi-health', legal: 'bg-gigi-legal',
   };
   return map[ctx] || 'bg-muted-foreground';
 }

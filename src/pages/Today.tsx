@@ -119,7 +119,14 @@ export default function Today() {
       const resp = await fetch(BRIEFING_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ tasks: activeTasks || [], display_name: profile?.display_name || '', timezone: tz }),
+        body: JSON.stringify({
+          tasks: activeTasks || [],
+          display_name: profile?.display_name || '',
+          timezone: tz,
+          work_hours_start: profile?.work_hours_start || '09:00',
+          work_hours_end: profile?.work_hours_end || '18:00',
+          deep_work_preference: profile?.deep_work_preference || 'morning',
+        }),
         signal: abortRef.current.signal,
       });
       if (!resp.ok) { const err = await resp.json().catch(() => ({})); toast.error(err.error || 'Failed to generate briefing'); setBriefLoading(false); return; }
@@ -488,6 +495,24 @@ export default function Today() {
               {sections}
             </DragDropContext>
 
+            {briefing?.energy_sequence && briefing.energy_sequence.length > 0 && (
+              <section className="border-t border-border pt-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">ENERGY PLAN</h3>
+                <div className="space-y-1">
+                  {briefing.energy_sequence.map((e, i) => (
+                    <div key={i} className="flex items-center gap-2.5 py-0.5">
+                      <span className="text-[10px] font-mono text-muted-foreground/50 w-14 shrink-0">{e.time}</span>
+                      <span className={cn(
+                        'w-1.5 h-1.5 rounded-full shrink-0',
+                        e.type === 'deep' ? 'bg-gigi-work' : e.type === 'rest' ? 'bg-gigi-health' : 'bg-muted-foreground/40'
+                      )} />
+                      <p className="text-[12px] text-foreground/70">{e.activity}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {briefing?.prepare_tomorrow && briefing.prepare_tomorrow.length > 0 && (
               <section className="border-t border-border pt-4">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">PREPARE FOR TOMORROW</h3>
@@ -519,6 +544,24 @@ export default function Today() {
           {showCalendar && timelinePanel}
 
           {sections}
+
+          {briefing?.energy_sequence && briefing.energy_sequence.length > 0 && (
+            <section className="border-t border-border pt-4">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">ENERGY PLAN</h3>
+              <div className="space-y-1">
+                {briefing.energy_sequence.map((e, i) => (
+                  <div key={i} className="flex items-center gap-2.5 py-0.5">
+                    <span className="text-[10px] font-mono text-muted-foreground/50 w-14 shrink-0">{e.time}</span>
+                    <span className={cn(
+                      'w-1.5 h-1.5 rounded-full shrink-0',
+                      e.type === 'deep' ? 'bg-gigi-work' : e.type === 'rest' ? 'bg-gigi-health' : 'bg-muted-foreground/40'
+                    )} />
+                    <p className="text-[12px] text-foreground/70">{e.activity}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {briefing?.prepare_tomorrow && briefing.prepare_tomorrow.length > 0 && (
             <section className="border-t border-border pt-4">
